@@ -256,8 +256,8 @@ def get_cells_by_distance(matrix, sx, sy):
     return visited_ordered
 
 
-def generate_key_port(matrix, visited_ordered):
-    sequence = generate_valid_sequence(["a", "b", "c", "d"])
+def generate_key_port(matrix, visited_ordered, keys):
+    sequence = generate_valid_sequence(keys)
 
     delta = len(visited_ordered) // (len(sequence) + 2)
     i = delta
@@ -286,7 +286,7 @@ def generate_floor_direct(map_obj: Map, floor_directed_density):
         next_pos = solution[i + 1][0][0]
         cell_iter_counter[curr_pos] += 1
         if cell_iter_counter[curr_pos] > 1:
-            dir_vec_map.pop(curr_pos)
+            dir_vec_map.pop(curr_pos, None)
         else:
             dir_vec_map[curr_pos] = (
                 next_pos[0] - curr_pos[0],
@@ -317,6 +317,9 @@ def generate_floor_variation(
     bonus_density += mud_density
     source_density += bonus_density
 
+    if source_density == 0.0:
+        return
+
     for i in range(1, map_obj.rows - 1):
         for j in range(1, map_obj.cols - 1):
             cell = map_obj.matrix[i][j]
@@ -338,6 +341,7 @@ def generate_map(
     cols:int,
     *,
     algorithm:Literal["backtracking", "recursive_division", "kruskal", "prim"]="backtracking",
+    keys:list[str]=["a","b","c","d"],
     loop_density:float=0.0,
     water_density:float=0,
     mud_density:float=0,
@@ -370,7 +374,7 @@ def generate_map(
 
     cells_by_distance = get_cells_by_distance(matrix, sx, sy)
 
-    generate_key_port(matrix, cells_by_distance)
+    generate_key_port(matrix, cells_by_distance, keys)
 
     ex, ey = cells_by_distance[-1]
     matrix[ey][ex] = MapEnd(ex, ey)

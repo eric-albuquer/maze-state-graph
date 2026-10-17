@@ -42,6 +42,7 @@ map = generate_map(
     rows=41,
     cols=41, 
     algorithm="recursive_division", 
+    keys=["a","b","c","d","e","f"],
     loop_density = 0.05,
     water_density= 0.05, 
     mud_density= 0.05, 
