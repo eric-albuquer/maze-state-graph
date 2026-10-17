@@ -9,7 +9,7 @@ from solver.solver import solve
 pygame.init()
 pygame.font.init()
 
-WIDTH, HEIGHT = 1600, 900
+WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Visualizador de Grafos / Mapas")
 
@@ -41,8 +41,8 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
 map = generate_map(
     rows=41,
     cols=41, 
-    algorithm="backtracking", 
-    loop_density = 0.1,
+    algorithm="recursive_division", 
+    loop_density = 0.05,
     water_density= 0.05, 
     mud_density= 0.05, 
     source_density= 0, 
@@ -65,6 +65,9 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                running = False
 
     screen.fill(COLOR_BACKGROUND)
 

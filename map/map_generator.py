@@ -40,7 +40,7 @@ class DisjointSet:
         return True
 
 
-def generate_backtraking(rows, cols):
+def generate_backtracking(rows, cols):
     matrix = [[MapWall(x, y) for x in range(cols)] for y in range(rows)]
 
     stack = [(1, 1)]
@@ -71,6 +71,53 @@ def generate_backtraking(rows, cols):
 
     return matrix
 
+def generate_recursive_division(rows, cols):
+    matrix = [[MapDotFloor(x, y) for x in range(cols)] for y in range(rows)]
+
+    for i in range(rows):
+        matrix[i][0] = MapWall(0, i)
+        matrix[i][cols - 1] = MapWall(cols - 1, i)
+
+    for i in range(cols):
+        matrix[0][i] = MapWall(i, 0)
+        matrix[rows - 1][i] = MapWall(i, rows - 1)
+
+    stack = [(1, 1, cols - 2, rows - 2)]
+
+    while stack:
+        x0, y0, x1, y1 = stack.pop()
+        width = x1 - x0
+        height = y1 - y0
+
+        if width <= 1 or height <= 1:
+            continue
+
+        choose_vertical = width > height if width != height else random.choice([True, False])
+
+        if choose_vertical:
+            x_list = [x for x in range(x0 + 1, x1) if x % 2 == 0]
+            if not x_list: continue
+            choosed_x = random.choice(x_list)
+            for i in range(y0, y1 + 1):
+                matrix[i][choosed_x] = MapWall(choosed_x, i)
+            y_list = [y for y in range(y0, y1 + 1) if y % 2 != 0]
+            open_idx = random.choice(y_list)
+            matrix[open_idx][choosed_x] = MapDotFloor(choosed_x, open_idx)
+            stack.append((x0, y0, choosed_x - 1, y1))
+            stack.append((choosed_x + 1, y0, x1, y1))
+        else:
+            y_list = [y for y in range(y0, y1 + 1) if y % 2 == 0]
+            if not y_list: continue
+            choosed_y = random.choice(y_list)
+            for i in range(x0, x1 + 1):
+                matrix[choosed_y][i] = MapWall(i, choosed_y)
+            x_list = [x for x in range(x0, x1 + 1) if x % 2 != 0]
+            open_idx = random.choice(x_list)
+            matrix[choosed_y][open_idx] = MapDotFloor(open_idx, choosed_y)
+            stack.append((x0, y0, x1, choosed_y - 1))
+            stack.append((x0, choosed_y + 1, x1, y1))
+
+    return matrix
 
 def generate_kruskal(rows, cols):
     matrix = [[MapWall(x, y) for x in range(cols)] for y in range(rows)]
@@ -99,6 +146,57 @@ def generate_kruskal(rows, cols):
     return matrix
 
 
+def generate_prim(rows, cols):
+    matrix = [[MapWall(x, y) for x in range(cols)] for y in range(rows)]
+
+    sx, sy = (
+            random.randint(0, (cols // 2) - 1) * 2 + 1,
+            random.randint(0, (rows // 2) - 1) * 2 + 1,
+        )
+    matrix[sy][sx] = MapDotFloor(sx, sy)
+
+    total_nodes = (rows // 2) * (cols // 2)
+
+    edges_list = []
+    visited_nodes = set([(sx, sy)])
+
+    for dx, dy in DIR_DOUBLE:
+        nx = sx + dx
+        ny = sy + dy
+        if nx < 1 or nx >= cols - 1 or ny < 1 or ny >= rows:
+            continue
+        edges_list.append((nx, ny, sx, sy))
+
+    while edges_list:
+        idx = random.randint(0, len(edges_list) - 1)
+        x, y, px, py = edges_list[idx]
+
+        edges_list[idx] = edges_list[-1]
+        edges_list.pop()
+
+        if (x, y) in visited_nodes:
+            continue
+        visited_nodes.add((x, y))
+
+        mid_x = (x + px) // 2
+        mid_y = (y + py) // 2
+
+        matrix[y][x] = MapDotFloor(x, y)
+        matrix[mid_y][mid_x] = MapDotFloor(mid_x, mid_y)
+
+        if len(visited_nodes) == total_nodes:
+            break
+
+        for dx, dy in DIR_DOUBLE:
+            nx, ny = x + dx, y + dy
+            if nx < 1 or nx >= cols - 1 or ny < 1 or ny >= rows - 1:
+                continue
+            if (nx, ny) in visited_nodes:
+                continue
+            edges_list.append((nx, ny, x, y))
+
+    return matrix
+
 def generate_loops(matrix, loop_density):
     if loop_density == 0.0:
         return
@@ -110,12 +208,6 @@ def generate_loops(matrix, loop_density):
         start = (i & 1) + 1
         for j in range(start, cols - 1, 2):
             if not isinstance(matrix[i][j], MapWall):
-                continue
-            adjacents = 0
-            for dx, dy in DIR:
-                if not isinstance(matrix[i + dy][j + dx], MapWall):
-                    adjacents += 1
-            if adjacents > 2:
                 continue
             if random.random() < loop_density:
                 matrix[i][j] = MapDotFloor(j, i)
@@ -245,7 +337,7 @@ def generate_map(
     rows:int,
     cols:int,
     *,
-    algorithm:Literal["backtracking", "kruskal"]="backtracking",
+    algorithm:Literal["backtracking", "recursive_division", "kruskal", "prim"]="backtracking",
     loop_density:float=0.0,
     water_density:float=0,
     mud_density:float=0,
@@ -258,11 +350,15 @@ def generate_map(
 
     match algorithm:
         case "backtracking":
-            matrix = generate_backtraking(rows, cols)
+            matrix = generate_backtracking(rows, cols)
+        case "recursive_division":
+            matrix = generate_recursive_division(rows, cols)
         case "kruskal":
             matrix = generate_kruskal(rows, cols)
+        case "prim":
+            matrix = generate_prim(rows, cols)
         case _:
-            raise ValueError("Invalid algorithm, use backtracking or kruskal")
+            raise ValueError("Invalid algorithm")
 
     generate_loops(matrix, loop_density)
 
