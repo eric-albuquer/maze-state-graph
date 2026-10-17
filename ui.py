@@ -3,13 +3,13 @@ import pygame
 
 from map.map import *
 from map.map_generator import generate_map
-from map.map_loader import map_loader
+from map.map_loader import map_load
 from solver.solver import solve
 
 pygame.init()
 pygame.font.init()
 
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1600, 900
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Visualizador de Grafos / Mapas")
 
@@ -36,14 +36,14 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
             return color
     return (0, 0, 0)
 
-map = map_loader(r"/Users/ega/Desktop/codigos/python/Graph/projeto grafos v2/maps/m02_uma_chave.txt")
+map = map_load("m03_tres_chaves.txt")
 
 cell_size = min(WIDTH / map.cols, HEIGHT / map.rows)
 
 offset_x = (WIDTH - (map.cols * cell_size)) / 2
 offset_y = (HEIGHT - (map.rows * cell_size)) / 2
 
-font_size = int(cell_size * 0.6)
+font_size = int(cell_size * 1.0)
 font = pygame.font.SysFont(None, font_size)
 
 clock = pygame.time.Clock()

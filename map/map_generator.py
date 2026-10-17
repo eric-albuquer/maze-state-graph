@@ -177,6 +177,13 @@ def generate_floor_direct(map_obj: Map, floor_directed_density):
     if floor_directed_density == 0.0:
         return
 
+    dir = [
+        (0, -1),
+        (1, 0),
+        (0, 1),
+        (-1, 0)
+    ]
+
     solution = solve(map_obj)
     if not solution:
         raise Exception("Invalid maze")
@@ -199,10 +206,16 @@ def generate_floor_direct(map_obj: Map, floor_directed_density):
             if not isinstance(cell, MapDotFloor):
                 continue
             pos = (j, i)
-            if pos not in dir_vec_map:
+            vec = None
+            if cell_iter_counter[pos] == 0:
+                vec = random.choice(dir)
+            elif cell_iter_counter[pos] == 1:
+                vec = dir_vec_map[pos]
+            else:
                 continue
+
             if random.random() < floor_directed_density:
-                map_obj.matrix[i][j] = MapFloorDirected(j, i, dir_vec_map[pos])
+                map_obj.matrix[i][j] = MapFloorDirected(j, i, vec)
 
 def generate_floor_variation(map_obj: Map, water_density, mud_density, bonus_density, source_density):
     mud_density += water_density
