@@ -40,9 +40,11 @@ def map_load(file_path: str) -> Map:
 
     return Map(start, end, matrix)
 
-def map_save(map: Map, file_path: str):
+def map_save(map: Map, file_path: str = None):
+    if not file_path:
+        file_path = f"generated_{map.rows}x{map.cols}_{map.start}_{map.end}.txt"
+
     with open(MAPS_FOLDER / file_path, "w") as file:
         for row in map.matrix:
-            for cell in row:
-                file.write(repr(cell))
-            file.write("\n")
+            row_str = "".join(repr(cell) for cell in row)
+            file.write(row_str + "\n")

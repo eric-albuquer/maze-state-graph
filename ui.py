@@ -18,15 +18,16 @@ COLOR_GRID_BORDER = (40, 44, 52)
 COLOR_TEXT = (20, 20, 20)
 
 COLOR_MAP = {
-    MapStart: (46, 204, 113),    # Verde Suave
-    MapEnd: (231, 76, 60),       # Vermelho / Laranja
-    MapSource: (155, 89, 182),   # Roxo
-    MapKey: (241, 196, 15),      # Amarelo Ouro
-    MapPort: (127, 140, 141),    # Cinza
-    MapMud: (160, 82, 45),       # Marrom Terra
-    MapWater: (52, 152, 219),    # Azul
-    MapBonus: (230, 126, 34),    # Laranja
-    MapDotFloor: (236, 240, 241),   # Branco Off-white
+    MapStart: (46, 204, 113),           # Verde Suave
+    MapEnd: (231, 76, 60),              # Vermelho / Laranja
+    MapSource: (155, 89, 182),          # Roxo
+    MapKey: (241, 196, 15),             # Amarelo Ouro
+    MapPort: (127, 140, 141),           # Cinza
+    MapMud: (160, 82, 45),              # Marrom Terra
+    MapWater: (52, 152, 219),           # Azul
+    MapBonus: (230, 126, 34),           # Laranja
+    MapDotFloor: (236, 240, 241),       # Branco Off-white
+    MapFloorDirected: (26, 188, 156)    # Verde Turquesa / Ciano
 }
 
 def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
@@ -36,14 +37,25 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
             return color
     return (0, 0, 0)
 
-map = map_load("m03_tres_chaves.txt")
+#map = map_load("m03_tres_chaves.txt")
+map = generate_map(
+    rows=41,
+    cols=41, 
+    algorithm="backtracking", 
+    loop_density = 0.1,
+    water_density= 0.05, 
+    mud_density= 0.05, 
+    source_density= 0, 
+    bonus_density= 0.02, 
+    floor_directed_density=0.05
+)
 
 cell_size = min(WIDTH / map.cols, HEIGHT / map.rows)
 
 offset_x = (WIDTH - (map.cols * cell_size)) / 2
 offset_y = (HEIGHT - (map.rows * cell_size)) / 2
 
-font_size = int(cell_size * 1.0)
+font_size = int(cell_size * 1.2)
 font = pygame.font.SysFont(None, font_size)
 
 clock = pygame.time.Clock()

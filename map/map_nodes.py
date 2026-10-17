@@ -1,7 +1,12 @@
-class MapTile:
+from abc import ABC
+
+class MapTile(ABC): # Interface
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
+
+    def __repr__(self) -> str:
+        pass
 
 class MapWall(MapTile):
     def __init__(self, x, y):
