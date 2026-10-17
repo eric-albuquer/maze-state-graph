@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+
+# Saídas geradas
+out/
