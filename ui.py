@@ -5,6 +5,10 @@ from map.map import *
 from map.map_generator import generate_map
 from map.map_loader import map_load
 from solver.astar_solver import solve_astar
+# from solver.bfs_solver import solve_bfs
+# from solver.dfs_solver import solve_dfs
+# from solver.dijkstra_solver import solve_dijkstra
+# from solver.bellman_ford_solver import solve_bellman_ford
 
 pygame.init()
 pygame.font.init()
@@ -13,7 +17,8 @@ WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Graph / Map Visualizer")
 
-FPS = 40
+FPS = 5
+MAP_FILE = "m06_fonte.txt"
 
 COLOR_BACKGROUND = (24, 28, 36)
 COLOR_GRID_BORDER = (40, 44, 52)
@@ -43,10 +48,10 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
     return (0, 0, 0)
 
 
-map = map_load("m08_grande.txt")
+map = map_load(MAP_FILE)
 # map = generate_map(
-#     rows=101,
-#     cols=101,
+#     rows=61,
+#     cols=61,
 #     strategy="backtracking",
 #     keys=["a", "b", "c", "d"],
 #     braid_factor=0.00,          
@@ -67,7 +72,6 @@ current_ports = set()
 
 visit_counts = {}
 
-# Menu width proportionally scaled to screen width (e.g., 22% of WIDTH)
 MENU_WIDTH = int(WIDTH * 0.22)
 map_area_width = WIDTH - MENU_WIDTH
 map_area_height = HEIGHT
@@ -80,7 +84,6 @@ offset_y = (map_area_height - (map.rows * cell_size)) / 2
 font_size = int(cell_size * 1.1)
 font = pygame.font.SysFont(None, font_size)
 
-# Proportional font scaling for the menu based on MENU_WIDTH
 menu_font_size = max(25, int(MENU_WIDTH * 0.09))
 menu_title_size = max(30, int(MENU_WIDTH * 0.12))
 menu_font = pygame.font.SysFont(None, menu_font_size)
@@ -193,7 +196,7 @@ while running:
         none_surf = menu_font.render("  None", True, (150, 150, 150))
         screen.blit(none_surf, (margin_x, info_y))
     else:
-        for key in sorted(current_keys):
+        for key in current_keys:
             key_text = f"  - Key: {key}" + (" (USED)" if key in current_ports else "")
             key_surf = menu_font.render(key_text, True, (241, 196, 15))
             screen.blit(key_surf, (margin_x, info_y))

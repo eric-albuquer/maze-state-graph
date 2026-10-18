@@ -2,7 +2,6 @@ from map.map import *
 import random
 from collections import deque, defaultdict
 from typing import Literal
-import heapq
 
 DIR_DOUBLE = [(0, -2), (2, 0), (0, 2), (-2, 0)]
 DIR = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -326,7 +325,7 @@ def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
 
             new_state = ((nx, ny), new_keys)
 
-            if best_step_map.get(new_state, float("inf")) <= new_steps:
+            if new_state in prev_map:
                 continue
 
             best_step_map[new_state] = new_steps
@@ -406,7 +405,6 @@ def generate_floor_variation(
                 map_obj.matrix[i][j] = MapBonus(j, i)
             elif prob < source_density:
                 map_obj.matrix[i][j] = MapSource(j, i)
-
 
 def generate_map(
     rows: int,
@@ -492,5 +490,7 @@ def generate_map(
     generate_floor_variation(
         map_obj, water_density, mud_density, bonus_density, source_density
     )
+
+    map_obj.compute_stats()
 
     return map_obj

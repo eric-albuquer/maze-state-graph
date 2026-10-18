@@ -12,8 +12,8 @@ def map_load(file_path: str) -> Map:
             case "G": return MapEnd(x, y)
             case ",": return MapMud(x, y)
             case "~": return MapWater(x, y)
-            case k if "a" <= k <= "d": return MapKey(x, y, k)
-            case p if "A" <= p <= "D": return MapPort(x, y, p.lower())
+            case k if "a" <= k <= "z": return MapKey(x, y, k)
+            case p if "A" <= p <= "Z": return MapPort(x, y, p.lower())
             case ">": return MapFloorDirected(x, y, (1, 0))
             case "<": return MapFloorDirected(x, y, (-1, 0))
             case "v": return MapFloorDirected(x, y, (0, 1))
@@ -38,7 +38,10 @@ def map_load(file_path: str) -> Map:
                 row.append(node)
             matrix.append(row)
 
-    return Map(start, end, matrix)
+    map = Map(start, end, matrix)
+    map.compute_stats()
+
+    return map
 
 def map_save(map: Map, file_path: str = None):
     if not file_path:

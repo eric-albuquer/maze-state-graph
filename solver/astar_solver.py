@@ -29,12 +29,12 @@ def solve_astar(map: Map) -> list[tuple[int, int]] | None:
         curr_node = map.matrix[y][x]
 
         if (x, y) == map.end:
-            cur = state
+            curr = state
             path = []
-            while cur:
-                final_cost = best_cost_map[cur] - (3 * best_step_map[cur])
-                path.append((cur, final_cost))
-                cur = prev_map[cur]
+            while curr:
+                final_cost = best_cost_map[curr]
+                path.append((curr, final_cost))
+                curr = prev_map[curr]
             return path[::-1]
 
         next_steps = steps + 1
@@ -55,7 +55,7 @@ def solve_astar(map: Map) -> list[tuple[int, int]] | None:
 
             new_keys = keys
             new_bonus_visited = bonus_visited
-            new_cost = cost + node.cost + 3
+            new_cost = cost + node.cost
 
             if isinstance(node, MapKey):
                 new_keys = keys | {node.letter}
