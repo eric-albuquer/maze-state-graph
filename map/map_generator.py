@@ -1,8 +1,8 @@
 from map.map import *
 import random
 from collections import deque, defaultdict
-from solver.solver import solve
 from typing import Literal
+import heapq
 
 DIR_DOUBLE = [(0, -2), (2, 0), (0, 2), (-2, 0)]
 DIR = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -256,6 +256,7 @@ def get_cells_by_distance(matrix, sx, sy):
 
     while queue:
         x, y = queue.popleft()
+        visited_ordered.append((x, y))
 
         for dx, dy in DIR:
             nx, ny = x + dx, y + dy
@@ -266,7 +267,6 @@ def get_cells_by_distance(matrix, sx, sy):
             if pos in visited:
                 continue
             visited.add(pos)
-            visited_ordered.append(pos)
             queue.append(pos)
 
     return visited_ordered
@@ -286,28 +286,94 @@ def generate_key_port(matrix, visited_ordered, keys):
         i += delta
 
 
-def generate_floor_direct(map_obj: Map, floor_directed_density):
+def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
+    start_state = (map.start, frozenset(), frozenset())
+
+    best_cost_map = {start_state: 0}
+    prev_map = {start_state: None}
+    count_map = defaultdict(int)
+
+    heap = [(0, map.start[0], map.start[1], frozenset(), frozenset())]
+    worst_state = ((map.start[0], map.start[1]), frozenset(), frozenset())
+    # state -> (pos, keys, bonus_visited)
+
+    while heap:
+        cost, x, y, keys, bonus_visited = heapq.heappop(heap)
+        state = ((x, y), keys, bonus_visited)
+        count_map[(x, y)] += 1
+
+        if count_map[(x, y)] <= count_map[worst_state[0]]:
+            worst_state = state
+
+        if cost > best_cost_map.get(state, float("inf")):
+            continue
+
+        curr_node = map.matrix[y][x]
+
+        for dx, dy in DIR:
+            nx, ny = x + dx, y + dy
+
+            node = map.matrix[ny][nx]
+            if isinstance(node, MapWall):
+                continue
+            if (
+                isinstance(curr_node, MapFloorDirected)
+                and (dx, dy) != curr_node.dir_vec
+            ):
+                continue
+            if isinstance(node, MapPort) and node.letter not in keys:
+                continue
+
+            new_keys = keys
+            new_bonus_visited = bonus_visited
+            new_cost = cost + node.cost
+
+            if isinstance(node, MapKey):
+                new_keys = keys | {node.letter}
+            elif isinstance(node, MapSource):
+                new_cost = cost + 1
+            elif isinstance(node, MapBonus):
+                if (nx, ny) in bonus_visited:
+                    new_cost += 5
+                else:
+                    new_bonus_visited = bonus_visited | {(nx, ny)}
+
+            new_state = ((nx, ny), new_keys, new_bonus_visited)
+
+            if best_cost_map.get(new_state, float("inf")) <= new_cost:
+                continue
+
+            best_cost_map[new_state] = new_cost
+            prev_map[new_state] = state
+
+            heapq.heappush(heap, (new_cost, nx, ny, new_keys, new_bonus_visited))
+
+    return worst_state, prev_map
+
+
+def generate_floor_direct(map_obj: Map, prev_map, last_state, floor_directed_density):
     if floor_directed_density == 0.0:
         return
 
-    solution = solve(map_obj)
-    if not solution:
-        raise ValueError("Unsolvable maze generated")
-
     dir_vec_map = {}
     cell_iter_counter = defaultdict(int)
+    curr = last_state
 
-    for i in range(len(solution) - 1):
-        curr_pos = solution[i][0][0]
-        next_pos = solution[i + 1][0][0]
-        cell_iter_counter[curr_pos] += 1
-        if cell_iter_counter[curr_pos] > 1:
-            dir_vec_map.pop(curr_pos, None)
+    while True:
+        next_pos = curr[0]
+        prev_curr = prev_map[curr]
+        if not prev_curr:
+            break
+        pos = prev_curr[0]
+        cell_iter_counter[pos] += 1
+        if cell_iter_counter[pos] > 1:
+            dir_vec_map.pop(pos, None)
         else:
-            dir_vec_map[curr_pos] = (
-                next_pos[0] - curr_pos[0],
-                next_pos[1] - curr_pos[1],
+            dir_vec_map[pos] = (
+                next_pos[0] - pos[0],
+                next_pos[1] - pos[1],
             )
+        curr = prev_curr
 
     for i in range(1, map_obj.rows - 1):
         for j in range(1, map_obj.cols - 1):
@@ -387,7 +453,7 @@ def generate_map(
     Raises:
         ValueError: If strategy is invalid or total density exceeds 1.0.
     """
-        
+
     total_density = (
         water_density
         + mud_density
@@ -429,12 +495,13 @@ def generate_map(
 
     generate_key_port(matrix, cells_by_distance, keys)
 
-    ex, ey = cells_by_distance[-1]
-    matrix[ey][ex] = MapEnd(ex, ey)
+    map_obj = Map((sx, sy), None, matrix)
+    last_state, prev_map = get_worst_cell(map_obj)
+    x, y = last_state[0]
+    map_obj.end = (x, y)
+    map_obj.matrix[y][x] = MapEnd(x, y)
 
-    map_obj = Map((sx, sy), (ex, ey), matrix)
-
-    generate_floor_direct(map_obj, floor_directed_density)
+    generate_floor_direct(map_obj, prev_map, last_state, floor_directed_density)
 
     generate_floor_variation(
         map_obj, water_density, mud_density, bonus_density, source_density
