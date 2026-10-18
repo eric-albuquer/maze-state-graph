@@ -1,7 +1,7 @@
 from map.map import *
 import heapq
 
-dir = (
+DIR = (
     (0, -1),
     (1, 0),
     (0, 1),
@@ -28,7 +28,7 @@ def solve(map: Map) -> list[tuple[int, int]] | None:
                 cur = prev_map[cur]
             return path[::-1]
 
-        for dx, dy in dir:
+        for dx, dy in DIR:
             nx, ny = x + dx, y + dy
             node = map.matrix[ny][nx]
             if isinstance(node, MapWall):

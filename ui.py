@@ -39,11 +39,11 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
 
 #map = map_load("m03_tres_chaves.txt")
 map = generate_map(
-    rows=41,
-    cols=41, 
-    algorithm="recursive_division", 
-    keys=["a","b","c","d","e","f"],
-    loop_density = 0.05,
+    rows=31,
+    cols=31, 
+    algorithm="backtracking", 
+    keys=["a","b","c","d"],
+    braid_factor = 0.05,
     water_density= 0.05, 
     mud_density= 0.05, 
     source_density= 0, 
@@ -56,7 +56,7 @@ cell_size = min(WIDTH / map.cols, HEIGHT / map.rows)
 offset_x = (WIDTH - (map.cols * cell_size)) / 2
 offset_y = (HEIGHT - (map.rows * cell_size)) / 2
 
-font_size = int(cell_size * 1.2)
+font_size = int(cell_size * 1.1)
 font = pygame.font.SysFont(None, font_size)
 
 clock = pygame.time.Clock()

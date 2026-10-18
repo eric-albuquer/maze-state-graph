@@ -6,7 +6,7 @@ from typing import Literal
 
 DIR_DOUBLE = [(0, -2), (2, 0), (0, 2), (-2, 0)]
 DIR = [(0, -1), (1, 0), (0, 1), (-1, 0)]
-ADJ_DIR = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
+
 
 class DisjointSet:
     def __init__(self):
@@ -43,8 +43,13 @@ class DisjointSet:
 def generate_backtracking(rows, cols):
     matrix = [[MapWall(x, y) for x in range(cols)] for y in range(rows)]
 
-    stack = [(1, 1)]
-    matrix[1][1] = MapDotFloor(1, 1)
+    sx, sy = (
+        random.randint(0, (cols // 2) - 1) * 2 + 1,
+        random.randint(0, (rows // 2) - 1) * 2 + 1,
+    )
+    
+    stack = [(sx, sy)]
+    matrix[sy][sx] = MapDotFloor(sx, sy)
 
     while stack:
         x, y = stack[-1]
@@ -71,6 +76,7 @@ def generate_backtracking(rows, cols):
 
     return matrix
 
+
 def generate_recursive_division(rows, cols):
     matrix = [[MapDotFloor(x, y) for x in range(cols)] for y in range(rows)]
 
@@ -92,32 +98,41 @@ def generate_recursive_division(rows, cols):
         if width <= 1 or height <= 1:
             continue
 
-        choose_vertical = width > height if width != height else random.choice([True, False])
+        choose_vertical = (
+            width > height if width != height else random.choice([True, False])
+        )
 
         if choose_vertical:
-            x_list = [x for x in range(x0 + 1, x1) if x % 2 == 0]
-            if not x_list: continue
-            choosed_x = random.choice(x_list)
+            min_even = x0 + 1 if (x0 + 1) % 2 == 0 else x0 + 2
+            max_even = x1 - 1 if (x1 - 1) % 2 == 0 else x1 - 2
+            if min_even > max_even:
+                continue
+            choosed_x = random.randint(min_even // 2, max_even // 2) * 2
             for i in range(y0, y1 + 1):
                 matrix[i][choosed_x] = MapWall(choosed_x, i)
-            y_list = [y for y in range(y0, y1 + 1) if y % 2 != 0]
-            open_idx = random.choice(y_list)
+            min_odd = y0 if y0 % 2 != 0 else y0 + 1
+            max_odd = y1 if y1 % 2 != 0 else y1 - 1
+            open_idx = random.randint((min_odd - 1) // 2, (max_odd - 1) // 2) * 2 + 1
             matrix[open_idx][choosed_x] = MapDotFloor(choosed_x, open_idx)
             stack.append((x0, y0, choosed_x - 1, y1))
             stack.append((choosed_x + 1, y0, x1, y1))
         else:
-            y_list = [y for y in range(y0, y1 + 1) if y % 2 == 0]
-            if not y_list: continue
-            choosed_y = random.choice(y_list)
+            min_even = y0 + 1 if (y0 + 1) % 2 == 0 else y0 + 2
+            max_even = y1 - 1 if (y1 - 1) % 2 == 0 else y1 - 2
+            if min_even > max_even:
+                continue
+            choosed_y = random.randint(min_even // 2, max_even // 2) * 2
             for i in range(x0, x1 + 1):
                 matrix[choosed_y][i] = MapWall(i, choosed_y)
-            x_list = [x for x in range(x0, x1 + 1) if x % 2 != 0]
-            open_idx = random.choice(x_list)
+            min_odd = x0 if x0 % 2 != 0 else x0 + 1
+            max_odd = x1 if x1 % 2 != 0 else x1 - 1
+            open_idx = random.randint((min_odd - 1) // 2, (max_odd - 1) // 2) * 2 + 1
             matrix[choosed_y][open_idx] = MapDotFloor(open_idx, choosed_y)
             stack.append((x0, y0, x1, choosed_y - 1))
             stack.append((x0, choosed_y + 1, x1, y1))
 
     return matrix
+
 
 def generate_kruskal(rows, cols):
     matrix = [[MapWall(x, y) for x in range(cols)] for y in range(rows)]
@@ -150,9 +165,9 @@ def generate_prim(rows, cols):
     matrix = [[MapWall(x, y) for x in range(cols)] for y in range(rows)]
 
     sx, sy = (
-            random.randint(0, (cols // 2) - 1) * 2 + 1,
-            random.randint(0, (rows // 2) - 1) * 2 + 1,
-        )
+        random.randint(0, (cols // 2) - 1) * 2 + 1,
+        random.randint(0, (rows // 2) - 1) * 2 + 1,
+    )
     matrix[sy][sx] = MapDotFloor(sx, sy)
 
     total_nodes = (rows // 2) * (cols // 2)
@@ -197,8 +212,9 @@ def generate_prim(rows, cols):
 
     return matrix
 
-def generate_loops(matrix, loop_density):
-    if loop_density == 0.0:
+
+def generate_loops(matrix, braid_factor):
+    if braid_factor == 0.0:
         return
 
     rows = len(matrix)
@@ -209,7 +225,7 @@ def generate_loops(matrix, loop_density):
         for j in range(start, cols - 1, 2):
             if not isinstance(matrix[i][j], MapWall):
                 continue
-            if random.random() < loop_density:
+            if random.random() < braid_factor:
                 matrix[i][j] = MapDotFloor(j, i)
 
 
@@ -300,7 +316,11 @@ def generate_floor_direct(map_obj: Map, floor_directed_density):
                 continue
             match cell_iter_counter[(j, i)]:
                 case 0:
-                    vec = random.choice(DIR)
+                    neighbors = []
+                    for dx, dy in DIR:
+                        if not isinstance(map_obj.matrix[i + dy][j + dx], MapWall):
+                            neighbors.append((dx, dy))
+                    vec = random.choice(neighbors)
                 case 1:
                     vec = dir_vec_map[(j, i)]
                 case _:
@@ -337,18 +357,20 @@ def generate_floor_variation(
 
 
 def generate_map(
-    rows:int,
-    cols:int,
+    rows: int,
+    cols: int,
     *,
-    algorithm:Literal["backtracking", "recursive_division", "kruskal", "prim"]="backtracking",
-    keys:list[str]=["a","b","c","d"],
-    loop_density:float=0.0,
-    water_density:float=0,
-    mud_density:float=0,
-    bonus_density:float=0,
-    source_density:float=0,
-    floor_directed_density:float=0,
-):
+    algorithm: Literal[
+        "backtracking", "recursive_division", "kruskal", "prim"
+    ] = "backtracking",
+    keys: list[str] = ["a", "b", "c", "d"],
+    braid_factor: float = 0.0,
+    water_density: float = 0,
+    mud_density: float = 0,
+    bonus_density: float = 0,
+    source_density: float = 0,
+    floor_directed_density: float = 0,
+) -> Map:
     rows |= 1
     cols |= 1
 
@@ -364,7 +386,7 @@ def generate_map(
         case _:
             raise ValueError("Invalid algorithm")
 
-    generate_loops(matrix, loop_density)
+    generate_loops(matrix, braid_factor)
 
     sx, sy = (
         random.randint(0, (cols // 2) - 1) * 2 + 1,
