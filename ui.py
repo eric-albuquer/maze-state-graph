@@ -39,10 +39,10 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
 
 #map = map_load("m03_tres_chaves.txt")
 map = generate_map(
-    rows=31,
-    cols=31, 
-    algorithm="backtracking", 
-    keys=["a","b","c","d"],
+    rows=41,
+    cols=41, 
+    strategy="backtracking", 
+    keys=["a","b","c","d", "e"],
     braid_factor = 0.05,
     water_density= 0.05, 
     mud_density= 0.05, 

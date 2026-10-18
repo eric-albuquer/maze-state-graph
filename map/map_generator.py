@@ -47,7 +47,7 @@ def generate_backtracking(rows, cols):
         random.randint(0, (cols // 2) - 1) * 2 + 1,
         random.randint(0, (rows // 2) - 1) * 2 + 1,
     )
-    
+
     stack = [(sx, sy)]
     matrix[sy][sx] = MapDotFloor(sx, sy)
 
@@ -360,7 +360,7 @@ def generate_map(
     rows: int,
     cols: int,
     *,
-    algorithm: Literal[
+    strategy: Literal[
         "backtracking", "recursive_division", "kruskal", "prim"
     ] = "backtracking",
     keys: list[str] = ["a", "b", "c", "d"],
@@ -371,10 +371,41 @@ def generate_map(
     source_density: float = 0,
     floor_directed_density: float = 0,
 ) -> Map:
+    """Generates a customizable game maze with varied terrains and structures.
+
+    Args:
+        rows: Grid height (automatically forced to odd).
+        cols: Grid width (automatically forced to odd).
+        strategy: Maze generation method ("backtracking", "recursive_division", "kruskal", "prim").
+        keys: List of characters for collectible keys to spawn.
+        braid_factor: Ratio of internal walls to remove to create loops [0.0, 1.0].
+        *_density: Spawn rates [0.0, 1.0] for special floor tiles (sum <= 1.0).
+
+    Returns:
+        Map: An initialized game map object containing the tile matrix.
+
+    Raises:
+        ValueError: If strategy is invalid or total density exceeds 1.0.
+    """
+        
+    total_density = (
+        water_density
+        + mud_density
+        + bonus_density
+        + source_density
+        + floor_directed_density
+    )
+
+    if total_density > 1.0:
+        raise ValueError(
+            f"Total density constraint violated: The sum of all tile densities "
+            f"({total_density:.2f}) cannot exceed 1.0."
+        )
+
     rows |= 1
     cols |= 1
 
-    match algorithm:
+    match strategy:
         case "backtracking":
             matrix = generate_backtracking(rows, cols)
         case "recursive_division":
@@ -384,7 +415,7 @@ def generate_map(
         case "prim":
             matrix = generate_prim(rows, cols)
         case _:
-            raise ValueError("Invalid algorithm")
+            raise ValueError("Invalid strategy")
 
     generate_loops(matrix, braid_factor)
 

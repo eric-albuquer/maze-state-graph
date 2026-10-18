@@ -7,7 +7,7 @@ from map.map_generator import generate_map
 map = generate_map(
     rows=13,
     cols=31, 
-    algorithm="backtracking", 
+    strategy="backtracking", 
     keys=["a","b","c","d"],
     braid_factor= 0.05,
     water_density= 0.05, 
