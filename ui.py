@@ -13,6 +13,8 @@ WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Graph / Map Visualizer")
 
+FPS = 40
+
 COLOR_BACKGROUND = (24, 28, 36)
 COLOR_GRID_BORDER = (40, 44, 52)
 COLOR_TEXT = (20, 20, 20)
@@ -41,19 +43,19 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
     return (0, 0, 0)
 
 
-# map = map_load("m03_tres_chaves.txt")
-map = generate_map(
-    rows=21,
-    cols=21,
-    strategy="backtracking",
-    keys=["a", "b", "c", "d", "e", "f"],
-    braid_factor=0.00,          
-    water_density=0.04,         
-    mud_density=0.04,          
-    source_density=0.02,
-    bonus_density=0.02,         
-    floor_directed_density=0.01 
-)
+map = map_load("m08_grande.txt")
+# map = generate_map(
+#     rows=101,
+#     cols=101,
+#     strategy="backtracking",
+#     keys=["a", "b", "c", "d"],
+#     braid_factor=0.00,          
+#     water_density=0.04,         
+#     mud_density=0.04,          
+#     source_density=0.02,
+#     bonus_density=0.005,         
+#     floor_directed_density=0.01 
+# )
 
 solution = solve_astar(map)
 
@@ -85,6 +87,7 @@ menu_font = pygame.font.SysFont(None, menu_font_size)
 menu_title_font = pygame.font.SysFont(None, menu_title_size)
 
 clock = pygame.time.Clock()
+moving = True
 running = True
 
 while running:
@@ -95,13 +98,16 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 running = False
 
-    state_info, current_cost = solution[current_steps]
-    current_cell, current_keys, _ = state_info
+    if moving:
+        state_info, current_cost = solution[current_steps]
+        current_cell, current_keys, _ = state_info
 
-    visit_counts[current_cell] = visit_counts.get(current_cell, 0) + 1
-
-    if current_steps < len(solution) - 1:
+        visit_counts[current_cell] = visit_counts.get(current_cell, 0) + 1
+        
         current_steps += 1
+
+    if current_steps == len(solution):
+        moving = False
 
     x, y = current_cell
     if isinstance(map.matrix[y][x], MapPort):
@@ -194,7 +200,7 @@ while running:
             info_y += line_spacing
 
     pygame.display.flip()
-    clock.tick(5)
+    clock.tick(FPS)
 
 pygame.quit()
 sys.exit()

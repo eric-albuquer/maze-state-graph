@@ -9,9 +9,10 @@ def heuristic(pos, end):
 
 
 def solve_astar(map: Map) -> list[tuple[int, int]] | None:
-    start_state = (map.start, 0, frozenset(), frozenset())
+    start_state = (map.start, frozenset(), frozenset())
 
     best_cost_map = {start_state: 0}
+    best_step_map = {start_state: 0}
     prev_map = {start_state: None}
 
     h_start = heuristic(map.start, map.end)
@@ -20,7 +21,7 @@ def solve_astar(map: Map) -> list[tuple[int, int]] | None:
 
     while heap:
         _, cost, steps, x, y, keys, bonus_visited = heapq.heappop(heap)
-        state = ((x, y), steps, keys, bonus_visited)
+        state = ((x, y), keys, bonus_visited)
 
         if cost > best_cost_map.get(state, float("inf")):
             continue
@@ -29,10 +30,10 @@ def solve_astar(map: Map) -> list[tuple[int, int]] | None:
 
         if (x, y) == map.end:
             cur = state
-            steps = state[1]
             path = []
             while cur:
-                path.append((cur, best_cost_map[cur] - 3 * steps))
+                final_cost = best_cost_map[cur] - (3 * best_step_map[cur])
+                path.append((cur, final_cost))
                 cur = prev_map[cur]
             return path[::-1]
 
@@ -64,12 +65,13 @@ def solve_astar(map: Map) -> list[tuple[int, int]] | None:
                 else:
                     new_bonus_visited = bonus_visited | {(nx, ny)}
 
-            new_state = ((nx, ny), next_steps, new_keys, new_bonus_visited)
+            new_state = ((nx, ny), new_keys, new_bonus_visited)
 
             if best_cost_map.get(new_state, float("inf")) <= new_cost:
                 continue
 
             best_cost_map[new_state] = new_cost
+            best_step_map[new_state] = next_steps
             prev_map[new_state] = state
 
             priority = new_cost + heuristic((nx, ny), map.end)

@@ -287,28 +287,28 @@ def generate_key_port(matrix, visited_ordered, keys):
 
 
 def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
-    start_state = (map.start, frozenset(), frozenset())
+    start_state = (map.start, frozenset())
 
-    best_cost_map = {start_state: 0}
+    best_step_map = {start_state: 0}
     prev_map = {start_state: None}
     count_map = defaultdict(int)
 
-    heap = [(0, map.start[0], map.start[1], frozenset(), frozenset())]
-    worst_state = ((map.start[0], map.start[1]), frozenset(), frozenset())
+    queue = deque([(0, map.start[0], map.start[1], frozenset())])
+    worst_state = ((map.start[0], map.start[1]), frozenset())
     # state -> (pos, keys, bonus_visited)
 
-    while heap:
-        cost, x, y, keys, bonus_visited = heapq.heappop(heap)
-        state = ((x, y), keys, bonus_visited)
+    while queue:
+        steps, x, y, keys = queue.popleft()
+        state = ((x, y), keys)
         count_map[(x, y)] += 1
 
         if count_map[(x, y)] <= count_map[worst_state[0]]:
             worst_state = state
 
-        if cost > best_cost_map.get(state, float("inf")):
+        if steps > best_step_map.get(state, float("inf")):
             continue
 
-        curr_node = map.matrix[y][x]
+        new_steps = steps + 1
 
         for dx, dy in DIR:
             nx, ny = x + dx, y + dy
@@ -316,37 +316,23 @@ def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
             node = map.matrix[ny][nx]
             if isinstance(node, MapWall):
                 continue
-            if (
-                isinstance(curr_node, MapFloorDirected)
-                and (dx, dy) != curr_node.dir_vec
-            ):
-                continue
             if isinstance(node, MapPort) and node.letter not in keys:
                 continue
 
             new_keys = keys
-            new_bonus_visited = bonus_visited
-            new_cost = cost + node.cost
 
             if isinstance(node, MapKey):
                 new_keys = keys | {node.letter}
-            elif isinstance(node, MapSource):
-                new_cost = cost + 1
-            elif isinstance(node, MapBonus):
-                if (nx, ny) in bonus_visited:
-                    new_cost += 5
-                else:
-                    new_bonus_visited = bonus_visited | {(nx, ny)}
 
-            new_state = ((nx, ny), new_keys, new_bonus_visited)
+            new_state = ((nx, ny), new_keys)
 
-            if best_cost_map.get(new_state, float("inf")) <= new_cost:
+            if best_step_map.get(new_state, float("inf")) <= new_steps:
                 continue
 
-            best_cost_map[new_state] = new_cost
+            best_step_map[new_state] = new_steps
             prev_map[new_state] = state
 
-            heapq.heappush(heap, (new_cost, nx, ny, new_keys, new_bonus_visited))
+            queue.append((new_steps, nx, ny, new_keys))
 
     return worst_state, prev_map
 
