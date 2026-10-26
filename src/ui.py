@@ -2,13 +2,9 @@ import sys
 import pygame
 
 from src.map.map import *
-from src.map.map_generator import generate_map
-from src.map.map_loader import map_load
-from src.solver.astar_solver import solve_astar
-# from solver.bfs_solver import solve_bfs
-# from solver.dfs_solver import solve_dfs
-# from solver.dijkstra_solver import solve_dijkstra
-# from solver.bellman_ford_solver import solve_bellman_ford
+from src.settings.display import *
+from src.settings.map_setup import load_selected_map
+from src.settings.solver_setup import get_solver
 
 pygame.init()
 pygame.font.init()
@@ -18,16 +14,6 @@ WIDTH = screen_info.current_w
 HEIGHT = screen_info.current_h * 0.95
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Graph / Map Visualizer")
-
-FPS = 5
-MAP_FILE = "m03_tres_chaves.txt"
-
-COLOR_BACKGROUND = (24, 28, 36)
-COLOR_GRID_BORDER = (40, 44, 52)
-COLOR_TEXT = (20, 20, 20)
-COLOR_PLAYER = (255, 0, 255, 150)
-COLOR_MENU_BG = (33, 38, 48)
-COLOR_MENU_TEXT = (230, 230, 230)
 
 COLOR_MAP = {
     MapDotFloor: (236, 240, 241),  # Off-white
@@ -50,21 +36,9 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
     return (0, 0, 0)
 
 
-#map = map_load(MAP_FILE)
-map = generate_map(
-    rows=71,
-    cols=87,
-    strategy="backtracking",
-    keys=["a", "b", "c", "d", "e", "f", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "t", "u", "w", "x", "y", "z"],
-    braid_factor=0.0,          
-    water_density=0.05,         
-    mud_density=0.05,          
-    source_density=0.0,
-    bonus_density=0.005,         
-    floor_directed_density=0.01 
-)
+map = load_selected_map()
 
-solution = solve_astar(map)
+solution = get_solver()(map)
 
 current_cell = map.start
 current_steps = 0
@@ -74,7 +48,7 @@ current_ports = set()
 
 visit_counts = {}
 
-MENU_WIDTH = int(WIDTH * 0.22)
+MENU_WIDTH = int(WIDTH * MENU_WIDTH_RATIO)
 map_area_width = WIDTH - MENU_WIDTH
 map_area_height = HEIGHT
 
