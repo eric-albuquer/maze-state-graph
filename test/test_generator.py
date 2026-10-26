@@ -1,7 +1,7 @@
 import random
-from map.map_generator import generate_map
-from map.map_loader import map_save
-from solver.astar_solver import solve_astar
+from src.map.map_generator import generate_map
+from src.map.map_loader import map_save
+from src.solver.astar_solver import solve_astar
 import time
 
 # Parameters to choose from randomly
@@ -43,7 +43,7 @@ density_configs = [
 
 total_tests = 0
 failed_tests = 0
-target_tests = 100
+target_tests = 500
 
 print(f"=== STARTING RANDOMIZED STRESS TEST ({target_tests} MAPS) ===")
 

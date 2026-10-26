@@ -1,4 +1,4 @@
-from map.map import *
+from src.map.map import *
 import heapq
 
 DIR = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -64,6 +64,8 @@ def solve_astar(map: Map) -> list[tuple[int, int]] | None:
                     new_cost += 5
                 else:
                     new_bonus_visited = bonus_visited | {(nx, ny)}
+            elif isinstance(node, MapSource):
+                new_cost = cost + 1
 
             new_state = ((nx, ny), new_keys, new_bonus_visited)
 

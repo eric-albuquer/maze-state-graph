@@ -1,4 +1,4 @@
-from map.map import *
+from src.map.map import *
 from pathlib import Path
 
 MAPS_FOLDER = Path("maps")

@@ -1,4 +1,4 @@
-from map.map_nodes import *
+from src.map.map_nodes import *
 
 class MapStats:
     def __init__(self,
@@ -23,6 +23,21 @@ class MapStats:
 
         self.floor_count = floor_count
         self.wall_count = wall_count
+
+    def __repr__(self):
+        return f""""
+-----STATS------
+keys: {self.keys}
+dot count: {self.dot_count}
+water count: {self.water_count}
+mud count: {self.mud_count}
+floor directed count: {self.floor_directed_count}
+source count: {self.source_count}
+bonus count: {self.bonus_count}
+
+floor count: {self.floor_count}
+wall count: {self.wall_count}
+"""
 
 class Map:
     def __init__(self,
@@ -75,12 +90,13 @@ class Map:
 
         floor_count = (self.rows * self.cols) - wall_count
         self.stats = MapStats(keys, dot_count, water_count, mud_count, floor_directed_count, source_count, bonus_count, wall_count, floor_count)
+        return self.stats
 
     def __repr__(self):
         buffer = []
+        buffer.append(repr(self.stats))
         buffer.append(f"start: {self.start}")
         buffer.append(f"end: {self.end}")
-        buffer.append(f"keys: {self.keys}")
         for y, row in enumerate(self.matrix):
             row_buffer = [f"{y:02d}: "]
             for col in row:

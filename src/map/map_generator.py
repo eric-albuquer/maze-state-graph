@@ -1,4 +1,4 @@
-from map.map import *
+from src.map.map import *
 import random
 from collections import deque, defaultdict
 from typing import Literal
@@ -16,6 +16,7 @@ class DisjointSet:
         if val not in self.parent:
             self.parent[val] = val
             self.rank[val] = 0
+            return val
 
         if val != self.parent[val]:
             self.parent[val] = self.find(self.parent[val])
@@ -288,12 +289,12 @@ def generate_key_port(matrix, visited_ordered, keys):
 def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
     start_state = (map.start, frozenset())
 
-    best_step_map = {start_state: 0}
     prev_map = {start_state: None}
     count_map = defaultdict(int)
 
     queue = deque([(0, map.start[0], map.start[1], frozenset())])
     worst_state = ((map.start[0], map.start[1]), frozenset())
+    worst_state_steps = 0
     # state -> (pos, keys, bonus_visited)
 
     while queue:
@@ -301,11 +302,9 @@ def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
         state = ((x, y), keys)
         count_map[(x, y)] += 1
 
-        if count_map[(x, y)] <= count_map[worst_state[0]]:
+        if count_map[(x, y)] == 1 and steps > worst_state_steps:
+            worst_state_steps = steps
             worst_state = state
-
-        if steps > best_step_map.get(state, float("inf")):
-            continue
 
         new_steps = steps + 1
 
@@ -328,9 +327,7 @@ def get_worst_cell(map: Map) -> list[tuple[int, int]] | None:
             if new_state in prev_map:
                 continue
 
-            best_step_map[new_state] = new_steps
             prev_map[new_state] = state
-
             queue.append((new_steps, nx, ny, new_keys))
 
     return worst_state, prev_map
@@ -405,6 +402,7 @@ def generate_floor_variation(
                 map_obj.matrix[i][j] = MapBonus(j, i)
             elif prob < source_density:
                 map_obj.matrix[i][j] = MapSource(j, i)
+
 
 def generate_map(
     rows: int,

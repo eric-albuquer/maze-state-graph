@@ -41,7 +41,7 @@ Execute sempre a partir da raiz do projeto (os mapas são lidos de `maps/`
 relativo ao diretório atual).
 
 ```bash
-python ui.py            # interface gráfica
+python -m src.ui            # interface gráfica
 python -m test.test     # testes
 ```
 

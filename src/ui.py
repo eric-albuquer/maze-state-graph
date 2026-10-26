@@ -1,10 +1,10 @@
 import sys
 import pygame
 
-from map.map import *
-from map.map_generator import generate_map
-from map.map_loader import map_load
-from solver.astar_solver import solve_astar
+from src.map.map import *
+from src.map.map_generator import generate_map
+from src.map.map_loader import map_load
+from src.solver.astar_solver import solve_astar
 # from solver.bfs_solver import solve_bfs
 # from solver.dfs_solver import solve_dfs
 # from solver.dijkstra_solver import solve_dijkstra
@@ -13,12 +13,14 @@ from solver.astar_solver import solve_astar
 pygame.init()
 pygame.font.init()
 
-WIDTH, HEIGHT = 1920, 1080
+screen_info = pygame.display.Info()
+WIDTH = screen_info.current_w
+HEIGHT = screen_info.current_h * 0.95
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Graph / Map Visualizer")
 
 FPS = 5
-MAP_FILE = "m06_fonte.txt"
+MAP_FILE = "m03_tres_chaves.txt"
 
 COLOR_BACKGROUND = (24, 28, 36)
 COLOR_GRID_BORDER = (40, 44, 52)
@@ -48,19 +50,19 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
     return (0, 0, 0)
 
 
-map = map_load(MAP_FILE)
-# map = generate_map(
-#     rows=61,
-#     cols=61,
-#     strategy="backtracking",
-#     keys=["a", "b", "c", "d"],
-#     braid_factor=0.00,          
-#     water_density=0.04,         
-#     mud_density=0.04,          
-#     source_density=0.02,
-#     bonus_density=0.005,         
-#     floor_directed_density=0.01 
-# )
+#map = map_load(MAP_FILE)
+map = generate_map(
+    rows=71,
+    cols=87,
+    strategy="backtracking",
+    keys=["a", "b", "c", "d", "e", "f", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "t", "u", "w", "x", "y", "z"],
+    braid_factor=0.0,          
+    water_density=0.05,         
+    mud_density=0.05,          
+    source_density=0.0,
+    bonus_density=0.005,         
+    floor_directed_density=0.01 
+)
 
 solution = solve_astar(map)
 
@@ -109,8 +111,8 @@ while running:
         
         current_steps += 1
 
-    if current_steps == len(solution):
-        moving = False
+        if current_steps == len(solution):
+            moving = False
 
     x, y = current_cell
     if isinstance(map.matrix[y][x], MapPort):
@@ -160,7 +162,7 @@ while running:
 
     margin_x = int(MENU_WIDTH * 0.08)
     start_y = int(HEIGHT * 0.035)
-    line_spacing = int(menu_font_size * 1.5)
+    line_spacing = int(menu_font_size * 1.2)
 
     title_surf = menu_title_font.render("Control Panel", True, COLOR_MENU_TEXT)
     screen.blit(title_surf, (margin_x, start_y))
@@ -196,7 +198,7 @@ while running:
         none_surf = menu_font.render("  None", True, (150, 150, 150))
         screen.blit(none_surf, (margin_x, info_y))
     else:
-        for key in current_keys:
+        for key in sorted(current_keys):
             key_text = f"  - Key: {key}" + (" (USED)" if key in current_ports else "")
             key_surf = menu_font.render(key_text, True, (241, 196, 15))
             screen.blit(key_surf, (margin_x, info_y))
