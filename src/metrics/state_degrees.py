@@ -8,6 +8,9 @@ def successors(map: Map, state: MapState) -> list[MapState]:
     (x, y), keys, bonus_visited = state
     result = []
 
+    if isinstance(map.matrix[y][x], MapEnd):
+        return result
+
     for dx, dy in DIRECTIONS:
         nx, ny = x + dx, y + dy
         cell = map.matrix[ny][nx]
