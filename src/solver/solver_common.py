@@ -8,6 +8,34 @@ DIRECTIONS = (
     (-1, 0)
 )
 
+def adj_states(map: Map, state: MapState) -> list[MapState]:
+    (x, y), keys, bonus_visited = state
+    result = []
+
+    for dx, dy in DIRECTIONS:
+        nx, ny = x + dx, y + dy
+        cell = map.matrix[ny][nx]
+        if isinstance(cell, MapWall):
+            continue
+        if isinstance(cell, MapPort) and cell.letter not in keys:
+            continue
+        if isinstance(map.matrix[y][x], MapFloorDirected) and map.matrix[y][x].dir_vec != (dx, dy):
+            continue
+
+        new_keys = keys
+        new_bonus_visited = bonus_visited
+
+        new_pos = (nx, ny)
+
+        if isinstance(cell, MapKey):
+            new_keys = keys | {cell.letter}
+        elif isinstance(cell, MapBonus):
+            new_bonus_visited = bonus_visited | {new_pos}
+
+        result.append(MapState(new_pos, new_keys, new_bonus_visited))
+
+    return result
+
 def adj_states_with_cost(map: Map, state: MapState) -> list[tuple[MapState, int]]:
     (x, y), keys, bonus_visited = state
     result = []

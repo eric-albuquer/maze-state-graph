@@ -2,37 +2,7 @@ from src.map.map import Map
 from src.map.map_nodes import *
 from src.map.map_state import MapState
 from src.metrics.get_map_states import DIRECTIONS
-
-#get a map and a state and return one list of next possible states
-def successors(map: Map, state: MapState) -> list[MapState]:
-    (x, y), keys, bonus_visited = state
-    result = []
-
-    if isinstance(map.matrix[y][x], MapEnd):
-        return result
-
-    for dx, dy in DIRECTIONS:
-        nx, ny = x + dx, y + dy
-        cell = map.matrix[ny][nx]
-        if isinstance(cell, MapWall):
-            continue
-        if isinstance(cell, MapPort) and cell.letter not in keys:
-            continue
-        if isinstance(cell, MapFloorDirected) and cell.dir_vec != (dx, dy):
-            continue
-
-        new_keys = keys
-        new_bonus_visited = bonus_visited
-
-        if isinstance(cell, MapKey):
-            new_keys = keys | {cell.letter}
-        elif isinstance(cell, MapBonus):
-            new_bonus_visited = bonus_visited | {(nx, ny)}
-
-        result.append(MapState((nx, ny), new_keys, new_bonus_visited))
-
-    return result
-
+from src.solver.solver_common import adj_states
 
 def state_graph(map: Map) -> dict[MapState, list[MapState]]:
     start = MapState(map.start, frozenset(), frozenset())
@@ -43,7 +13,7 @@ def state_graph(map: Map) -> dict[MapState, list[MapState]]:
         state = stack.pop()
         if state in adj:
             continue
-        adj[state] = successors(map, state)
+        adj[state] = adj_states(map, state)
         stack.extend(adj[state])
 
     return adj
