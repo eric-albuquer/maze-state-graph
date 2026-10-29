@@ -25,7 +25,7 @@ def map_states(map: Map) -> set[MapState]:
                 continue
             if isinstance(cell, MapPort) and cell.letter not in keys:
                 continue
-            if isinstance(cell, MapFloorDirected) and cell.dir_vec != (dx, dy):
+            if isinstance(map.matrix[y][x], MapFloorDirected) and map.matrix[y][x].dir_vec != (dx, dy):
                 continue
 
             new_keys = keys

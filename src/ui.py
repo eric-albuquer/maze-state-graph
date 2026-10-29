@@ -78,9 +78,11 @@ while running:
                 running = False
 
     if moving:
-        state_info, current_cost = solution[current_steps]
+        state_info = solution[current_steps]
         current_cell, current_keys, _ = state_info
+        x, y = current_cell
 
+        current_cost += map.matrix[y][x].cost
         visit_counts[current_cell] = visit_counts.get(current_cell, 0) + 1
         
         current_steps += 1

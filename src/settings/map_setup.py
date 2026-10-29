@@ -14,7 +14,7 @@ from src.map.map_loader import map_load, map_save
 #   8 = m08_grande.txt
 
 GENERATED = 0  # não altere: é o valor do MAP_CHOICE que significa "mapa gerado"
-MAP_CHOICE = 1
+MAP_CHOICE = 6
 
 # Legenda do SAVE_GENERATED (só vale quando MAP_CHOICE == GENERATED):
 #   0 = não salva o mapa gerado
@@ -43,14 +43,14 @@ MAPS = {
 #   bonus_density           = 0..1, fração de células de bônus
 #   floor_directed_density  = 0..1, fração de esteiras direcionadas
 GENERATOR_PARAMS = dict(
-    rows=11,
-    cols=11,
+    rows=31,
+    cols=43,
     strategy="backtracking",
     keys=["a", "b", "c", "d"],
     braid_factor=0.00,
     water_density=0.04,
     mud_density=0.04,
-    source_density=0.02,
+    source_density=0.0,
     bonus_density=0.005,
     floor_directed_density=0.01,
 )

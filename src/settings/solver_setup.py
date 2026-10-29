@@ -12,7 +12,7 @@ from src.solver.bellman_ford_solver import solve_bellman_ford
 #   5 = Bellman-Ford
 # Obs.: BFS, DFS, Dijkstra e Bellman-Ford ainda não foram implementados
 # (levantam NotImplementedError); por enquanto só o A* funciona.
-SOLVER_CHOICE = 1
+SOLVER_CHOICE = 5
 
 SOLVERS = {
     1: solve_astar,
