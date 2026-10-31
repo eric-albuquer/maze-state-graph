@@ -14,7 +14,7 @@ from src.map.map_loader import map_load, map_save
 #   8 = m08_grande.txt
 
 GENERATED = 0  # não altere: é o valor do MAP_CHOICE que significa "mapa gerado"
-MAP_CHOICE = 6
+MAP_CHOICE = 8
 
 # Legenda do SAVE_GENERATED (só vale quando MAP_CHOICE == GENERATED):
 #   0 = não salva o mapa gerado

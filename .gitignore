@@ -15,5 +15,3 @@ env/
 .idea/
 .DS_Store
 
-# Saídas geradas
-out/

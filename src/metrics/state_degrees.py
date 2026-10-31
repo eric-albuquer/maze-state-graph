@@ -45,7 +45,7 @@ def state_degrees(map: Map) -> str:
 
 
 
-def state_degrees_csv(map: Map, out_dir: Path = Path("out/parte1")) -> Path:
+def state_degrees_csv(map: Map, out_dir: Path = Path("out/parte1/graus")) -> Path:
     adj = state_graph(map)
     in_deg, out_deg = degrees(adj)
 
