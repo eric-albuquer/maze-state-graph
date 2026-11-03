@@ -6,4 +6,6 @@ class MapState(NamedTuple):
     bonus_visited: frozenset = frozenset()
 
     def __repr__(self):
-        return f"{self.pos}|{"".join(sorted(list(self.keys)))}|{{{",".join(map(str, self.bonus_visited))}}}"
+        keys_str = "".join(sorted(self.keys))
+        bonus_str = ",".join(map(str, self.bonus_visited))
+        return f"{self.pos}|{keys_str}|{{{bonus_str}}}" 

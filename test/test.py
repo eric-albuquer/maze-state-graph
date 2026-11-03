@@ -5,8 +5,9 @@ from src.metrics.get_map_states import map_states
 # from solver.bfs_solver import solve_bfs
 # from solver.dfs_solver import solve_dfs
 # from solver.dijkstra_solver import solve_dijkstra
+from src.solver.bellman_ford_solver import solve_bellman_ford
 
-#map = map_load("m02_uma_chave.txt")
+# map = map_load("m02_uma_chave.txt")
 
 map = generate_map(
     rows=35,
