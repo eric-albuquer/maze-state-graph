@@ -12,9 +12,9 @@ def solve_dfs(map: Map) -> list[MapState]:
     while stack:
         state = stack.pop()
 
-        adj = adj_states_with_cost(map, state)
+        adj = adj_states(map, state)
 
-        for adj_state, _ in adj:
+        for adj_state in adj:
             if adj_state in reverse_path_map:
                 continue
             reverse_path_map[adj_state] = state

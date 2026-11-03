@@ -14,9 +14,9 @@ def solve_bfs(map: Map) -> list[MapState]:
     while queue:
         state = queue.popleft()
 
-        adj = adj_states_with_cost(map, state)
+        adj = adj_states(map, state)
 
-        for adj_state, _ in adj:
+        for adj_state in adj:
             if adj_state in reverse_path_map:
                 continue
             reverse_path_map[adj_state] = state
