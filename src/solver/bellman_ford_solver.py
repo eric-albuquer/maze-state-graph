@@ -2,9 +2,11 @@ from src.map.map import *
 from src.map.map_state import MapState
 from src.solver.solver_common import *
 from src.metrics.get_map_states import map_states
+from src.solver.solver_solution import SolverSolution
 
-def solve_bellman_ford(map: Map) -> list[MapState]:
+def solve_bellman_ford(map: Map) -> SolverSolution:
     start_state = MapState(map.start)
+    iterations = [start_state]
 
     best_cost_map = {start_state: 0}
     reverse_path_map = {start_state: None}
@@ -23,6 +25,7 @@ def solve_bellman_ford(map: Map) -> list[MapState]:
                 new_cost = adj_state_cost + cost
                 if new_cost >= best_cost_map.get(adj_state, float("inf")):
                     continue
+                iterations.append(adj_state)
                 reverse_path_map[adj_state] = state
                 best_cost_map[adj_state] = new_cost
                 changed = True
@@ -49,4 +52,8 @@ def solve_bellman_ford(map: Map) -> list[MapState]:
                 continue
             raise ValueError(f"Infinite cicle detected: {state} -> {adj_state}")
 
-    return get_path(reverse_path_map, end_state)
+    if not end_state:
+        return SolverSolution(iterations)
+
+    path = get_path(reverse_path_map, end_state)
+    return SolverSolution(iterations, path)

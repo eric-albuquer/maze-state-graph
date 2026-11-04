@@ -1,6 +1,6 @@
 # Configurações visuais da interface (src/ui.py).
 
-FPS = 5
+FPS = 30
 
 # Largura do menu lateral, como fração da largura da janela (0.22 = 22%)
 MENU_WIDTH_RATIO = 0.22

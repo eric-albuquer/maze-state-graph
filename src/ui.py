@@ -5,6 +5,7 @@ from src.map.map import *
 from src.settings.display import *
 from src.settings.map_setup import load_selected_map
 from src.settings.solver_setup import get_solver
+from src.solver.solver_solution import SolverSolution
 
 pygame.init()
 pygame.font.init()
@@ -38,15 +39,21 @@ def cell_to_color(cell: MapTile) -> tuple[int, int, int]:
 
 map = load_selected_map()
 
-solution = get_solver()(map)
+solution: SolverSolution = get_solver()(map)
+iterations = solution.iterations
+path = solution.path
 
 current_cell = map.start
-current_steps = 0
-current_cost = 0
 current_keys = frozenset()
 current_ports = set()
+current_cost = 0
 
-visit_counts = {}
+# Estado de controle de animação
+phase = "iterations" if iterations else "path"
+step_index = 0
+
+iteration_counts = {}
+path_counts = {}
 
 MENU_WIDTH = int(WIDTH * MENU_WIDTH_RATIO)
 map_area_width = WIDTH - MENU_WIDTH
@@ -78,17 +85,36 @@ while running:
                 running = False
 
     if moving:
-        state_info = solution[current_steps]
-        current_cell, current_keys, _ = state_info
-        x, y = current_cell
+        if phase == "iterations":
+            if step_index < len(iterations):
+                state_info = iterations[step_index]
+                current_cell, current_keys, _ = state_info
+                iteration_counts[current_cell] = iteration_counts.get(current_cell, 0) + 1
+                step_index += 1
 
-        current_cost += map.matrix[y][x].cost
-        visit_counts[current_cell] = visit_counts.get(current_cell, 0) + 1
-        
-        current_steps += 1
+            if step_index >= len(iterations):
+                # Transição: Limpa os rastros azuis e reseta o estado para a fase do path
+                phase = "path"
+                step_index = 0
+                iteration_counts.clear()
+                current_cell = map.start
+                current_cost = 0
+                current_keys = frozenset()
+                current_ports = set()
 
-        if current_steps == len(solution):
-            moving = False
+        elif phase == "path":
+            if step_index < len(path):
+                state_info = path[step_index]
+                current_cell, current_keys, _ = state_info
+                x, y = current_cell
+
+                current_cost += map.matrix[y][x].cost
+                path_counts[current_cell] = path_counts.get(current_cell, 0) + 1
+                step_index += 1
+
+            if step_index >= len(path):
+                moving = False
+                phase = "finished"
 
     x, y = current_cell
     if isinstance(map.matrix[y][x], MapPort):
@@ -107,12 +133,21 @@ while running:
 
             pygame.draw.rect(screen, color, cell_rect)
 
-            v_count = visit_counts.get((j, i), 0)
-            if v_count > 0:
-                overlay_alpha = min(v_count * 80, 240)
-                visit_surface = pygame.Surface((cell_size, cell_size), pygame.SRCALPHA)
-                visit_surface.fill((255, 0, 0, overlay_alpha))
-                screen.blit(visit_surface, (x, y))
+            # Desenho da sobreposição de visitas (Azul para iterações, Vermelho para o caminho)
+            if phase == "iterations":
+                v_count = iteration_counts.get((j, i), 0)
+                if v_count > 0:
+                    overlay_alpha = min(v_count * 30, 240)
+                    visit_surface = pygame.Surface((cell_size, cell_size), pygame.SRCALPHA)
+                    visit_surface.fill((255, 0, 255, overlay_alpha))  # Azul
+                    screen.blit(visit_surface, (x, y))
+            else:
+                v_count = path_counts.get((j, i), 0)
+                if v_count > 0:
+                    overlay_alpha = min(v_count * 80, 240)
+                    visit_surface = pygame.Surface((cell_size, cell_size), pygame.SRCALPHA)
+                    visit_surface.fill((255, 0, 0, overlay_alpha))  # Vermelho
+                    screen.blit(visit_surface, (x, y))
 
             pygame.draw.rect(screen, COLOR_GRID_BORDER, cell_rect, width=1)
 
@@ -153,11 +188,14 @@ while running:
 
     info_y = start_y + int(menu_title_size * 1.8)
 
+    current_visit_count = iteration_counts.get(current_cell, 0) if phase == "iterations" else path_counts.get(current_cell, 0)
+
     infos = [
-        f"Steps: {current_steps}",
+        f"Phase: {phase.capitalize()}",
+        f"Steps: {step_index}",
         f"Position: {current_cell}",
         f"Cost: {current_cost}",
-        f"Cell visits: {visit_counts.get(current_cell, 0)}x",
+        f"Cell visits: {current_visit_count}x",
     ]
 
     for text in infos:
