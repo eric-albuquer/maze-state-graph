@@ -8,4 +8,4 @@ class MapState(NamedTuple):
     def __repr__(self):
         keys_str = "".join(sorted(self.keys))
         bonus_str = ",".join(map(str, self.bonus_visited))
-        return f"{self.pos}|{keys_str}|{{{bonus_str}}}"
+        return f"{self.pos}|{keys_str}|{{{bonus_str}}}" 

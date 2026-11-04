@@ -17,7 +17,7 @@ maps_dir = Path(__file__).resolve().parent.parent.parent / "maps"
 #   8 = m08_grande.txt
 
 GENERATED = 0  # não altere: é o valor do MAP_CHOICE que significa "mapa gerado"
-MAP_CHOICE = 5
+MAP_CHOICE = 3
 
 # Legenda do SAVE_GENERATED (só vale quando MAP_CHOICE == GENERATED):
 #   0 = não salva o mapa gerado
@@ -27,7 +27,7 @@ SAVE_GENERATED = 0
 MAPS = {}
 
 for idx, map_file in enumerate(sorted(maps_dir.iterdir())):
-    MAPS[idx] = map_file.name
+    MAPS[idx + 1] = map_file.name
 
 # Legenda do GENERATOR_PARAMS (só vale quando MAP_CHOICE == GENERATED):
 #   rows, cols              = tamanho do mapa (linhas x colunas)

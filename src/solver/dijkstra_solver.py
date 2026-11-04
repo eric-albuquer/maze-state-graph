@@ -1,10 +1,12 @@
 from src.map.map import *
 from src.map.map_state import MapState
+from src.solver.solver_solution import SolverSolution
 from src.solver.solver_common import *
 import heapq
 
 
-def solve_dijkstra(map: Map) -> list[MapState]:
+def solve_dijkstra(map: Map) -> SolverSolution:
+    iterations = []
     start_state = MapState(map.start)
 
     reverse_path_map = {start_state: None}
@@ -18,8 +20,11 @@ def solve_dijkstra(map: Map) -> list[MapState]:
         if cost > best_cost_map.get(state, float("inf")):
             continue
 
+        iterations.append(state)
+
         if state.pos == map.end:
-            return get_path(reverse_path_map, state)
+            path = get_path(reverse_path_map, state)
+            return SolverSolution(iterations, path)
 
         adj = adj_states_with_cost(map, state)
 
@@ -31,4 +36,4 @@ def solve_dijkstra(map: Map) -> list[MapState]:
             best_cost_map[adj_state] = new_cost
             heapq.heappush(heap, (new_cost, adj_state))
 
-    return []
+    return SolverSolution(iterations)

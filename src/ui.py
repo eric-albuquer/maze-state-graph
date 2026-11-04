@@ -453,8 +453,10 @@ class Playback:
     """Estado da animação de uma solução (um algoritmo)."""
 
     def __init__(self, map: Map, solution, error: str | None, label: str):
+        """`solution` é um SolverSolution (iterations + path) ou None."""
         self.map = map
-        self.solution = solution or []
+        self.iterations = list(solution.iterations) if solution else []
+        self.solution = list(solution.path) if solution else []  # o caminho final
         self.error = error
         self.label = label
         self._fonts = {}
@@ -463,6 +465,10 @@ class Playback:
         self.reset()
 
     def reset(self):
+        self.phase = "iterations" if self.iterations else "path"
+        self.iter_n = 0
+        self.iter_cell = None
+        self.iter_visits = {}
         self.step_n = 0
         self.cost = 0
         self.visits = {}
@@ -470,12 +476,26 @@ class Playback:
         self.cell = self.map.start
         self.direction = (1, 0)
         self.keys = frozenset()
-        self.finished = not self.solution
+        self.finished = not self.iterations and not self.solution
         self.popup_open = True
 
     def advance(self):
         if self.finished:
             return
+
+        if self.phase == "iterations":
+            # uma iteração por tick, igual para todos os algoritmos
+            self.iter_cell = self.iterations[self.iter_n].pos
+            self.iter_visits[self.iter_cell] = self.iter_visits.get(self.iter_cell, 0) + 1
+            self.iter_n += 1
+            if self.iter_n >= len(self.iterations):
+                self.iter_cell = None
+                if self.solution:
+                    self.phase = "path"
+                else:
+                    self.finished = True
+            return
+
         prev = self.cell
         self.cell, self.keys, _ = self.solution[self.step_n]
         d = (self.cell[0] - prev[0], self.cell[1] - prev[1])
@@ -491,11 +511,17 @@ class Playback:
     def status(self, paused: bool) -> str:
         if self.error:
             return "Erro"
-        if not self.solution:
-            return "Sem solução"
         if self.finished:
-            return "Finalizado"
-        return "Pausado" if paused else "Rodando"
+            return "Finalizado" if self.solution else "Sem solução"
+        if paused:
+            return "Pausado"
+        return "Explorando" if self.phase == "iterations" else "Caminho"
+
+    def progress_text(self) -> str:
+        """Resumo curto do progresso para o cabeçalho dos quadrantes."""
+        if self.phase == "iterations" and not self.finished:
+            return f"Iter {self.iter_n}/{len(self.iterations)}"
+        return f"Passos {self.step_n}/{len(self.solution)}  Custo {self.cost}"
 
     def _build_background(self, cs: int) -> pygame.Surface:
         """Desenha uma vez o mapa estático (tiles, bordas, letras) em cs x cs por célula."""
@@ -547,6 +573,23 @@ class Playback:
         ox = oy = 0
 
         overlay = pygame.Surface((cs, cs), pygame.SRCALPHA)
+
+        # Etapa 1 (azul): células exploradas pelo algoritmo, mais forte a cada nova iteração
+        r, g, b = ITER_COLOR
+        count_size_it = max(8, int(cs * 0.4))
+        if count_size_it not in self._fonts:
+            self._fonts[count_size_it] = make_font(count_size_it)
+        for (j, i), v in self.iter_visits.items():
+            alpha = min(ITER_ALPHA_FIRST + (v - 1) * ITER_ALPHA_STEP, ITER_ALPHA_MAX)
+            overlay.fill((r, g, b, alpha))
+            scene.blit(overlay, (ox + j * cs, oy + i * cs))
+            if v > 1:
+                text = self._fonts[count_size_it].render(f"{v}x", True, (200, 225, 255))
+                scene.blit(text, text.get_rect(bottomleft=(ox + j * cs + 2, oy + (i + 1) * cs - 1)))
+        if self.iter_cell is not None:  # célula sendo explorada agora
+            j, i = self.iter_cell
+            pygame.draw.rect(scene, COLOR_ACCENT, (ox + j * cs, oy + i * cs, cs, cs), width=max(2, cs // 10))
+
         count_size = max(8, int(cs * 0.45))
         if count_size not in self._fonts:
             self._fonts[count_size] = make_font(count_size)
@@ -575,10 +618,15 @@ def draw_popup(p: Playback, area: pygame.Rect, color, title_font, body_font):
     if p.error:
         title, lines = f"{p.label}: erro", [p.error[:50]]
     elif not p.solution:
-        title, lines = f"{p.label} terminou", ["Sem solução para este mapa"]
+        title = f"{p.label} terminou"
+        lines = ["Sem solução para este mapa", f"Iterações: {len(p.iterations)}"]
     else:
         title = f"{p.label} terminou!"
-        lines = [f"Passos: {len(p.solution)}", f"Custo total: {p.cost}"]
+        lines = [
+            f"Iterações: {len(p.iterations)}",
+            f"Passos: {len(p.solution)}",
+            f"Custo total: {p.cost}",
+        ]
 
     line_h = body_font.get_linesize()
     w = min(area.width - 20, max(280, int(area.width * 0.6)))
@@ -664,7 +712,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                     line2 = p.error[:60]
                 else:
                     keys = "".join(sorted(p.keys)) or "-"
-                    line2 = f"Steps {p.step_n}/{len(p.solution)}  Cost {p.cost}  Keys {keys}"
+                    line2 = f"{p.progress_text()}  Chaves {keys}"
                 screen.blit(quad_font.render(line1, True, color), (quadrant.x + 10, quadrant.y + 6))
                 screen.blit(
                     quad_font.render(line2, True, COLOR_MENU_TEXT),
@@ -720,10 +768,11 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 f"Mapa: {map_label}",
                 f"Algoritmo: {p.label}",
                 f"Status: {p.status(paused)}",
+                f"Iterações: {p.iter_n}/{len(p.iterations)}",
                 f"Passos: {p.step_n}/{len(p.solution)}",
-                f"Posição: {p.cell}",
+                f"Posição: {p.cell if p.iter_cell is None else p.iter_cell}",
                 f"Custo: {p.cost}",
-                f"Visitas: {p.visits.get(p.cell, 0)}x",
+                f"Visitas: {(p.visits.get(p.cell, 0) if p.iter_cell is None else p.iter_visits.get(p.iter_cell, 0))}x",
             ]
             for text in infos:
                 put(text, COLOR_MENU_TEXT, x0, y)

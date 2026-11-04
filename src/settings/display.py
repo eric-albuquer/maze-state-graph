@@ -1,6 +1,6 @@
 # Configurações visuais da interface (src/ui.py).
 
-FPS = 5
+FPS = 60
 
 # Largura do menu lateral, como fração da largura da janela (0.22 = 22%)
 MENU_WIDTH_RATIO = 0.22
@@ -31,3 +31,10 @@ VISIT_COLORS = [(255, 40, 40)]
 VISIT_ALPHA_FIRST = 60
 VISIT_ALPHA_STEP = 45
 VISIT_ALPHA_MAX = 255
+
+# Etapa de exploração (iterações do algoritmo): azul que fica mais forte a cada nova
+# iteração na mesma célula. Passos menores que os do caminho, pois podem passar 5+ vezes.
+ITER_COLOR = (50, 120, 255)
+ITER_ALPHA_FIRST = 45
+ITER_ALPHA_STEP = 32
+ITER_ALPHA_MAX = 235
