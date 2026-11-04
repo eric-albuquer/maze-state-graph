@@ -10,8 +10,8 @@ from src.solver.bellman_ford_solver import solve_bellman_ford
 # map = map_load("m02_uma_chave.txt")
 
 map = generate_map(
-    rows=35,
-    cols=47,
+    rows=101,
+    cols=131,
     strategy="backtracking",
     keys=["a", "b", "c", "d"],
     braid_factor=0.001,
@@ -22,14 +22,14 @@ map = generate_map(
     floor_directed_density=0.001,
 )
 
-print(map)
-states = map_states(map)
+# print(map)
+# states = map_states(map)
 
-for s in states:
-    print(s)
-print(len(states))
+# for s in states:
+#     print(s)
+# print(len(states))
 
-# map_save(map, "huge_map_2001_2001.txt")
+map_save(map, "gerado.txt")
 
 # path = solve_astar(map)
 

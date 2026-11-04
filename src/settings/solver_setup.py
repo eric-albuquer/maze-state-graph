@@ -23,9 +23,16 @@ SOLVERS = {
 }
 
 
-def get_solver():
-    if SOLVER_CHOICE not in SOLVERS:
-        raise ValueError(
-            f"SOLVER_CHOICE inválido: {SOLVER_CHOICE} (use 1..{len(SOLVERS)})"
-        )
-    return SOLVERS[SOLVER_CHOICE]
+SOLVER_NAMES = {
+    1: "A*",
+    2: "BFS",
+    3: "DFS",
+    4: "Dijkstra",
+    5: "Bellman-Ford",
+}
+
+
+def get_solver(choice: int = SOLVER_CHOICE):
+    if choice not in SOLVERS:
+        raise ValueError(f"SOLVER_CHOICE inválido: {choice} (use 1..{len(SOLVERS)})")
+    return SOLVERS[choice]

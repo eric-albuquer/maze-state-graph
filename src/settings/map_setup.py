@@ -1,6 +1,9 @@
 from src.map.map import Map
 from src.map.map_generator import generate_map
 from src.map.map_loader import map_load, map_save
+from pathlib import Path
+
+maps_dir = Path(__file__).resolve().parent.parent.parent / "maps"
 
 # Legenda do MAP_CHOICE (qual mapa será usado):
 #   0 = mapa gerado (usa GENERATOR_PARAMS)
@@ -21,16 +24,10 @@ MAP_CHOICE = 5
 #   1 = salva o mapa gerado em maps/ (chama map_save)
 SAVE_GENERATED = 0
 
-MAPS = {
-    1: "m01_terreno.txt",
-    2: "m02_uma_chave.txt",
-    3: "m03_tres_chaves.txt",
-    4: "m04_esteiras.txt",
-    5: "m05_bonus.txt",
-    6: "m06_fonte.txt",
-    7: "m07_impossivel.txt",
-    8: "m08_grande.txt",
-}
+MAPS = {}
+
+for idx, map_file in enumerate(sorted(maps_dir.iterdir())):
+    MAPS[idx] = map_file.name
 
 # Legenda do GENERATOR_PARAMS (só vale quando MAP_CHOICE == GENERATED):
 #   rows, cols              = tamanho do mapa (linhas x colunas)
@@ -56,14 +53,19 @@ GENERATOR_PARAMS = dict(
 )
 
 
-def load_selected_map() -> Map:
-    if MAP_CHOICE == GENERATED:
-        map = generate_map(**GENERATOR_PARAMS)
+def load_map(choice: int, params: dict | None = None) -> Map:
+    """`params` sobrescreve GENERATOR_PARAMS quando choice == GENERATED."""
+    if choice == GENERATED:
+        map = generate_map(**(params or GENERATOR_PARAMS))
         if SAVE_GENERATED:
             map_save(map)
         return map
-    if MAP_CHOICE in MAPS:
-        return map_load(MAPS[MAP_CHOICE])
+    if choice in MAPS:
+        return map_load(MAPS[choice])
     raise ValueError(
-        f"MAP_CHOICE inválido: {MAP_CHOICE} (use {GENERATED} ou 1..{len(MAPS)})"
+        f"MAP_CHOICE inválido: {choice} (use {GENERATED} ou 1..{len(MAPS)})"
     )
+
+
+def load_selected_map() -> Map:
+    return load_map(MAP_CHOICE)
