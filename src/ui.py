@@ -1,10 +1,13 @@
 import math
+import queue
 import sys
 import threading
+import time
 from pathlib import Path
 import pygame
 
 from src.map.map import *
+from src.map.map_generator import MapGenerationCancelled
 from src.settings.display import *
 from src.sprites import tile_sprites, player_sprite
 from src.settings.map_setup import MAPS, GENERATED, GENERATOR_PARAMS, load_map
@@ -62,19 +65,19 @@ def draw_box(rect, selected=False, bg=COLOR_MENU_BG, border=None, shadow=True):
         pygame.draw.rect(screen, border, rect.inflate(-10, -10), width=1)
 
 
-MIN_FPS, MAX_FPS = 1, 120
+MIN_SPEED, MAX_SPEED = 1, 10000
 
 
-def draw_speed_bar(rect: pygame.Rect, fps: int):
+def draw_speed_bar(rect: pygame.Rect, speed: int):
     """Barra de velocidade em escala logarítmica (cada CIMA/BAIXO dobra/divide por 2)."""
     pygame.draw.rect(screen, (4, 4, 14), rect)
-    ratio = math.log(fps / MIN_FPS) / math.log(MAX_FPS / MIN_FPS)
+    ratio = math.log(speed / MIN_SPEED) / math.log(MAX_SPEED / MIN_SPEED)
     fill = rect.inflate(-4, -4)
     fill.width = max(4, int(fill.width * ratio))
     pygame.draw.rect(screen, COLOR_ACCENT, fill)
     pygame.draw.rect(screen, COLOR_BOX_BORDER, rect, width=2)
-    for tick in (1, 5, 10, 30, 60):  # marcas de referência
-        tx = rect.x + 2 + int((rect.width - 4) * math.log(tick / MIN_FPS) / math.log(MAX_FPS / MIN_FPS))
+    for tick in (1, 5, 10, 30, 60, 120):  # marcas de referência
+        tx = rect.x + 2 + int((rect.width - 4) * math.log(tick / MIN_SPEED) / math.log(MAX_SPEED / MIN_SPEED))
         pygame.draw.line(screen, COLOR_BOX_BORDER, (tx, rect.y + 2), (tx, rect.bottom - 3), 1)
 
 
@@ -288,7 +291,7 @@ def select_screen(title: str, options: list[str], count: int, subtitle: str = ""
 # ------------------------------------------------------- generator config
 
 STRATEGIES = ["backtracking", "recursive_division", "kruskal", "prim"]
-KEY_LETTERS = "abcdefgh"
+KEY_LETTERS = "abcdefhijklmnopqrtuwxyz"
 
 # (chave, rótulo, mínimo, máximo, passo)
 CONFIG_FIELDS = [
@@ -297,11 +300,11 @@ CONFIG_FIELDS = [
     ("strategy", "Estratégia", None, None, None),
     ("n_keys", "Nº de chaves", 0, len(KEY_LETTERS), 1),
     ("braid_factor", "Braid (loops)", 0.0, 1.0, 0.05),
-    ("water_density", "Água", 0.0, 0.5, 0.01),
-    ("mud_density", "Lama", 0.0, 0.5, 0.01),
-    ("source_density", "Fontes (*)", 0.0, 0.5, 0.01),
-    ("bonus_density", "Bônus (+)", 0.0, 0.5, 0.005),
-    ("floor_directed_density", "Esteiras", 0.0, 0.5, 0.005),
+    ("water_density", "Água", 0.0, 1.0, 0.01),
+    ("mud_density", "Lama", 0.0, 1.0, 0.01),
+    ("source_density", "Fontes (*)", 0.0, 1.0, 0.01),
+    ("bonus_density", "Bônus (+)", 0.0, 1.0, 0.005),
+    ("floor_directed_density", "Esteiras", 0.0, 1.0, 0.005),
 ]
 DENSITY_KEYS = [
     "water_density", "mud_density", "source_density",
@@ -446,6 +449,160 @@ def config_screen() -> dict | None:
         pygame.key.set_repeat()
 
 
+def generate_map_with_loading(params: dict) -> Map | None:
+    """Gera em background; ESC/clique cancela e retorna None."""
+    completed = threading.Event()
+    cancel_event = threading.Event()
+    progress_updates = queue.Queue()
+    result = {}
+
+    def generate():
+        try:
+            result["map"] = load_map(
+                GENERATED, params, cancel_event,
+                lambda stage, estimate, stage_number, stage_count: progress_updates.put(
+                    (stage, estimate, stage_number, stage_count)
+                ),
+            )
+        except Exception as error:
+            result["error"] = error
+        finally:
+            completed.set()
+
+    worker = threading.Thread(target=generate, daemon=True)
+    worker.start()
+    loading_font = make_font(max(32, int(HEIGHT * 0.05)))
+    hint_font = make_font(max(20, int(HEIGHT * 0.03)))
+    stage_font = make_font(max(16, int(HEIGHT * 0.022)))
+    cancel_button = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 + 78, 300, 58)
+    current_stage = "Iniciando..."
+    stage_number = 0
+    stage_count = 0
+    estimate = 0.0
+    started_at = time.perf_counter()
+    estimated_remaining = None
+    eta_updated_at = started_at
+    frame = 0
+    stage_labels = {
+        "generate_backtracking": "Construindo o labirinto (backtracking)",
+        "generate_recursive_division": "Construindo o labirinto (divisão recursiva)",
+        "generate_kruskal": "Construindo o labirinto (Kruskal)",
+        "generate_prim": "Construindo o labirinto (Prim)",
+        "generate_loops": "Criando ciclos no labirinto",
+        "get_cells_by_distance": "Calculando distâncias entre células",
+        "generate_key_port": "Distribuindo chaves e portas",
+        "get_worst_cell": "Buscando a célula mais distante",
+        "generate_floor_direct": "Distribuindo esteiras",
+        "generate_floor_variation": "Distribuindo tipos de terreno",
+        "compute_stats": "Calculando estatísticas do mapa",
+        "Concluído": "Geração concluída",
+    }
+
+    def format_duration(seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        return f"{seconds // 60:02}:{seconds % 60:02}"
+
+    while not completed.is_set():
+        while True:
+            try:
+                stage, estimate, stage_number, stage_count = progress_updates.get_nowait()
+                current_stage = stage_labels.get(stage, stage)
+                eta_updated_at = time.perf_counter()
+                elapsed_at_update = eta_updated_at - started_at
+                estimated_remaining = (
+                    elapsed_at_update * (1.0 - estimate) / estimate
+                    if estimate > 0.05
+                    else None
+                )
+            except queue.Empty:
+                break
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                cancel_event.set()
+                worker.join()
+                pygame.quit()
+                sys.exit()
+            if cancel_event.is_set():
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                cancel_event.set()
+            elif (
+                event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+                and cancel_button.collidepoint(event.pos)
+            ):
+                cancel_event.set()
+
+        screen.fill(COLOR_BACKGROUND)
+        message = "Cancelando geracao..." if cancel_event.is_set() else "Gerando mapa..."
+        draw_centered(loading_font, message, COLOR_MENU_TEXT, HEIGHT // 2 - 105)
+        stage_label = (
+            f"Etapa {stage_number}/{stage_count} — {current_stage}"
+            if stage_count
+            else current_stage
+        )
+        stage_surface = stage_font.render(stage_label, True, COLOR_HINT)
+        max_stage_width = WIDTH - 80
+        if stage_surface.get_width() > max_stage_width:
+            stage_surface = pygame.transform.smoothscale(
+                stage_surface,
+                (
+                    max_stage_width,
+                    int(stage_surface.get_height() * max_stage_width / stage_surface.get_width()),
+                ),
+            )
+        screen.blit(stage_surface, stage_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 55)))
+
+        bar = pygame.Rect(WIDTH // 2 - 220, HEIGHT // 2 - 20, 440, 26)
+        pygame.draw.rect(screen, (6, 6, 20), bar)
+        fill = bar.inflate(-4, -4)
+        progress_width = int(fill.width * min(max(estimate, 0.0), 1.0))
+        fill.width = progress_width
+        if fill.width:
+            pygame.draw.rect(screen, COLOR_ACCENT, fill)
+        if not cancel_event.is_set() and estimate < 1.0:
+            indicator_x = bar.x + 2 + progress_width
+            indicator_width = min(48, bar.right - 2 - indicator_x)
+            travel_width = bar.right - 2 - indicator_x - indicator_width
+            if indicator_width > 0:
+                segment_x = indicator_x + int((frame * 5) % (travel_width + 1))
+                pygame.draw.rect(
+                    screen, COLOR_ACCENT,
+                    (segment_x, fill.y, indicator_width, fill.height),
+                )
+        pygame.draw.rect(screen, COLOR_BOX_BORDER, bar, width=2)
+        now = time.perf_counter()
+        elapsed = now - started_at
+        percent_label = f"Estimativa: {estimate:.0%}"
+        if estimated_remaining is not None:
+            remaining = max(0, estimated_remaining - (now - eta_updated_at))
+            estimate_label = (
+                f"{percent_label}   Decorrido {format_duration(elapsed)}"
+                f"   Restante ~{format_duration(remaining)}"
+            )
+        else:
+            estimate_label = f"{percent_label}   Decorrido {format_duration(elapsed)}"
+        draw_centered(
+            hint_font, estimate_label, COLOR_MENU_TEXT, HEIGHT // 2 + 20
+        )
+        if not cancel_event.is_set():
+            draw_box(cancel_button, bg=(6, 6, 20), border=COLOR_BOX_BORDER, shadow=False)
+            draw_centered(
+                hint_font, "Cancelar (ESC)", COLOR_MENU_TEXT, cancel_button.centery
+            )
+
+        pygame.display.flip()
+        clock.tick(FPS)
+        frame += 1
+
+    if "error" in result:
+        if isinstance(result["error"], MapGenerationCancelled):
+            return None
+        raise result["error"]
+    return result["map"]
+
+
 # ----------------------------------------------------------- simulation
 
 
@@ -574,7 +731,7 @@ class Playback:
 
         overlay = pygame.Surface((cs, cs), pygame.SRCALPHA)
 
-        # Etapa 1 (azul): células exploradas pelo algoritmo, mais forte a cada nova iteração
+        # Etapa 1 (roxo): células exploradas pelo algoritmo, mais forte a cada nova iteração
         r, g, b = ITER_COLOR
         count_size_it = max(8, int(cs * 0.4))
         if count_size_it not in self._fonts:
@@ -664,10 +821,13 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
     popup_title_font = make_font(max(32, int(HEIGHT * 0.05)))
     popup_body_font = make_font(max(24, int(HEIGHT * 0.036)))
 
-    fps = FPS
+    speed = FPS
     paused = False
+    step_accumulator = 0.0
 
     while True:
+        dt = clock.tick(FPS) / 1000.0
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -678,9 +838,9 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 elif event.key == pygame.K_SPACE:
                     paused = not paused
                 elif event.key in (pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
-                    fps = min(fps * 2, MAX_FPS)
+                    speed = min(speed * 2, MAX_SPEED)
                 elif event.key in (pygame.K_DOWN, pygame.K_MINUS):
-                    fps = max(fps // 2, MIN_FPS)
+                    speed = max(speed // 2, MIN_SPEED)
                 elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     for p in plays:
                         p.popup_open = False
@@ -688,14 +848,19 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                     for p in plays:
                         p.reset()
                     paused = False
+                    step_accumulator = 0.0
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for p in plays:
                     p.popup_open = False
 
         if not paused:
-            for p in plays:
-                p.advance()
+            step_accumulator += dt * speed
+            steps = int(step_accumulator)
+            step_accumulator -= steps
+            for _ in range(steps):
+                for p in plays:
+                    p.advance()
 
         screen.fill(COLOR_BACKGROUND)
 
@@ -724,9 +889,9 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
             bar_w = min(360, WIDTH // 4)
             bar_box = pygame.Rect(WIDTH // 2 - bar_w // 2, HEIGHT // 2 - 24, bar_w, 48)
             draw_box(bar_box, bg=(6, 6, 20), border=COLOR_ACCENT)
-            label = quad_font.render(f"Velocidade: {fps}/s", True, COLOR_MENU_TEXT)
+            label = quad_font.render(f"Velocidade: {speed} passos/s", True, COLOR_MENU_TEXT)
             screen.blit(label, label.get_rect(midtop=(bar_box.centerx, bar_box.y + 5)))
-            draw_speed_bar(pygame.Rect(bar_box.x + 12, bar_box.bottom - 18, bar_w - 24, 10), fps)
+            draw_speed_bar(pygame.Rect(bar_box.x + 12, bar_box.bottom - 18, bar_w - 24, 10), speed)
         else:
             p = plays[0]
             map_area = pygame.Rect(MENU_WIDTH, 0, WIDTH - MENU_WIDTH, HEIGHT)
@@ -781,9 +946,9 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 put(p.error[:40], (231, 76, 60), x0, y)
                 y += line_spacing
 
-            put(f"Velocidade: {fps}/s", COLOR_MENU_TEXT, x0, y)
+            put(f"Velocidade: {speed}/s", COLOR_MENU_TEXT, x0, y)
             y += line_spacing - 2
-            draw_speed_bar(pygame.Rect(x0, y, inner_w, 16), fps)
+            draw_speed_bar(pygame.Rect(x0, y, inner_w, 16), speed)
             y += 16 + int(menu_font_size * 0.6)
             put("Chaves coletadas:", COLOR_MENU_TEXT, x0, y)
             y += int(line_spacing * 1.2)
@@ -809,7 +974,6 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 draw_popup(p, map_area, COLOR_ACCENT, popup_title_font, popup_body_font)
 
         pygame.display.flip()
-        clock.tick(fps if not paused else 30)
 
 
 # ----------------------------------------------------------------- main
@@ -835,9 +999,15 @@ def main():
             if params is None:
                 continue
         try:
-            map = load_map(map_choices[m], params)
+            map = (
+                generate_map_with_loading(params)
+                if map_choices[m] == GENERATED
+                else load_map(map_choices[m], params)
+            )
         except Exception as e:
             menu_screen("Erro ao gerar o mapa", ["Voltar"], subtitle=str(e)[:110])
+            continue
+        if map is None:
             continue
 
         while True:

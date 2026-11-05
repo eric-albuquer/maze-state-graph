@@ -2,6 +2,8 @@ from src.map.map import Map
 from src.map.map_generator import generate_map
 from src.map.map_loader import map_load, map_save
 from pathlib import Path
+from threading import Event
+from typing import Callable
 
 maps_dir = Path(__file__).resolve().parent.parent.parent / "maps"
 
@@ -53,10 +55,19 @@ GENERATOR_PARAMS = dict(
 )
 
 
-def load_map(choice: int, params: dict | None = None) -> Map:
+def load_map(
+    choice: int,
+    params: dict | None = None,
+    cancel_event: Event | None = None,
+    progress_callback: Callable[[str, float, int, int], None] | None = None,
+) -> Map:
     """`params` sobrescreve GENERATOR_PARAMS quando choice == GENERATED."""
     if choice == GENERATED:
-        map = generate_map(**(params or GENERATOR_PARAMS))
+        map = generate_map(
+            **(params or GENERATOR_PARAMS),
+            cancel_event=cancel_event,
+            progress_callback=progress_callback,
+        )
         if SAVE_GENERATED:
             map_save(map)
         return map

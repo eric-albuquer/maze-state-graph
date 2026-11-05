@@ -27,14 +27,14 @@ FONT_PATH = "assets/fonts/PressStart2P.ttf"
 
 # Rastro do percurso: uma só cor, e a opacidade (0..255) aumenta a cada passagem pela célula.
 # (Se a lista tiver mais de uma cor, a cor também muda por passagem.)
-VISIT_COLORS = [(255, 40, 40)]
+VISIT_COLORS = [(0, 0, 255)]
 VISIT_ALPHA_FIRST = 60
 VISIT_ALPHA_STEP = 45
 VISIT_ALPHA_MAX = 255
 
-# Etapa de exploração (iterações do algoritmo): azul que fica mais forte a cada nova
+# Etapa de exploração (iterações do algoritmo): roxo que fica mais forte a cada nova
 # iteração na mesma célula. Passos menores que os do caminho, pois podem passar 5+ vezes.
-ITER_COLOR = (50, 120, 255)
+ITER_COLOR = (255, 0, 255)
 ITER_ALPHA_FIRST = 45
 ITER_ALPHA_STEP = 32
 ITER_ALPHA_MAX = 235
