@@ -39,6 +39,7 @@ COLOR_MAP = {
 COLOR_SELECTED = (52, 152, 219)
 COLOR_HINT = (150, 150, 150)
 
+# [IA] Claude Code (Claude Sonnet 5.5) – estilo visual da UI em pygame: fonte do projeto e tamanhos de título/item/dica
 FONT_FILE = Path(__file__).resolve().parent.parent / FONT_PATH if FONT_PATH else None
 
 
@@ -54,6 +55,7 @@ item_font = make_font(44)
 hint_font = make_font(28)
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – estilo visual da UI em pygame: caixas estilo arcade com sombra e borda
 def draw_box(rect, selected=False, bg=COLOR_MENU_BG, border=None, shadow=True):
     """Caixa estilo arcade: sombra, borda dupla azul (amarela se selecionada), cantos retos."""
     border = border or (COLOR_ACCENT if selected else COLOR_BOX_BORDER)
@@ -65,6 +67,7 @@ def draw_box(rect, selected=False, bg=COLOR_MENU_BG, border=None, shadow=True):
         pygame.draw.rect(screen, border, rect.inflate(-10, -10), width=1)
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – código em pygame da barra de velocidade (escala logarítmica, ligada aos atalhos CIMA/BAIXO)
 MIN_SPEED, MAX_SPEED = 1, 10000
 
 
@@ -100,6 +103,7 @@ def draw_centered(font, text, color, y, x=None):
 # ---------------------------------------------------------------- menus
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – código em pygame da tela inicial de escolha de mapa e algoritmo, com pré-visualização do mapa
 def menu_screen(
     title: str, options: list[str], subtitle: str = "", previews: list | None = None
 ) -> int | None:
@@ -176,6 +180,7 @@ def menu_screen(
         clock.tick(30)
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – tela de espera em pygame enquanto os solvers rodam em threads (a janela não trava)
 def solve_screen(map: Map, solvers: list, labels: list[str]):
     """Roda os solvers em threads (em paralelo) para a janela não travar.
     Retorna uma lista de (solução, erro) ou None se o usuário cancelou."""
@@ -218,6 +223,7 @@ def solve_screen(map: Map, solvers: list, labels: list[str]):
     return [(r.get("solution"), r.get("error")) for r in results]
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – código em pygame da seleção de 4 algoritmos para o modo de comparação
 def select_screen(title: str, options: list[str], count: int, subtitle: str = ""):
     """Seleção múltipla: o usuário marca exatamente `count` opções.
     Retorna a lista de índices marcados (em ordem), ou None se ESC."""
@@ -290,6 +296,7 @@ def select_screen(title: str, options: list[str], count: int, subtitle: str = ""
 
 # ------------------------------------------------------- generator config
 
+# [IA] Claude Code (Claude Sonnet 5.5) – código em pygame da tela de parâmetros do mapa gerado (campos, limites e validação da soma das densidades)
 STRATEGIES = ["backtracking", "recursive_division", "kruskal", "prim"]
 KEY_LETTERS = "abcdefhijklmnopqrtuwxyz"
 
@@ -606,6 +613,7 @@ def generate_map_with_loading(params: dict) -> Map | None:
 # ----------------------------------------------------------- simulation
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – animação do percurso em pygame (fase de iterações em roxo e fase do caminho, mesma velocidade para todos os algoritmos)
 class Playback:
     """Estado da animação de uma solução (um algoritmo)."""
 
@@ -719,6 +727,7 @@ class Playback:
         if self._bg is None or self._bg[0] != cs:
             self._bg = (cs, self._build_background(cs))
 
+        # [IA] Claude Code (Claude Sonnet 5.5) – código de desenho do rastro com opacidade progressiva (composição em superfície sem alfa)
         # A janela do macOS (cocoa) tem canal alfa: blitar translúcido direto nela
         # NÃO mistura as cores (a opacidade era ignorada). Por isso compomos tudo
         # numa superfície de 24 bits (sem alfa) e só então copiamos para a tela.
@@ -731,6 +740,7 @@ class Playback:
 
         overlay = pygame.Surface((cs, cs), pygame.SRCALPHA)
 
+        # [IA] Claude Code (Claude Sonnet 5.5) – código de desenho das iterações exploradas, com opacidade crescente por visita
         # Etapa 1 (roxo): células exploradas pelo algoritmo, mais forte a cada nova iteração
         r, g, b = ITER_COLOR
         count_size_it = max(8, int(cs * 0.4))
@@ -770,6 +780,7 @@ class Playback:
         screen.blit(scene, (ox_screen, oy_screen))
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – pop-up em pygame ao fim do algoritmo, com iterações, passos e custo
 def draw_popup(p: Playback, area: pygame.Rect, color, title_font, body_font):
     """Caixa centralizada em `area` avisando que o algoritmo terminou."""
     if p.error:
@@ -804,9 +815,11 @@ def draw_popup(p: Playback, area: pygame.Rect, color, title_font, body_font):
     screen.blit(t, t.get_rect(centerx=box.centerx, y=y))
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – modo com 4 algoritmos em tela dividida em quadrantes (cores por quadrante)
 QUAD_COLORS = [(52, 152, 219), (46, 204, 113), (241, 196, 15), (231, 76, 60)]
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – laço de exibição em pygame: painel lateral, 4 quadrantes, barra de velocidade, pausa/reinício e pop-up
 def run_simulation(map: Map, plays: list[Playback], map_label: str):
     """Anima 1 solução (painel lateral) ou 4 (tela dividida em quadrantes).
     Retorna ao pressionar ESC."""
@@ -979,6 +992,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
 # ----------------------------------------------------------------- main
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – fluxo de telas da UI (mapa, parâmetros, algoritmo, comparação); a geração com carregamento em thread não é da IA
 def main():
     map_choices = [GENERATED] + list(MAPS)
     map_labels = ["Mapa gerado aleatório"] + [

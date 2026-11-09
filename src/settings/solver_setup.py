@@ -23,6 +23,7 @@ SOLVERS = {
 }
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – nomes dos algoritmos para os menus da UI e escolha do solver por parâmetro (sem alterar os algoritmos)
 SOLVER_NAMES = {
     1: "A*",
     2: "BFS",

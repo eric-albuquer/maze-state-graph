@@ -1,3 +1,4 @@
+# [IA] Claude Code (Claude Sonnet 5.5) – arquivo inteiro: carregamento, cache e escolha dos sprites usados pela UI em pygame
 from pathlib import Path
 
 import pygame

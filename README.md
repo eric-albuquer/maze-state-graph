@@ -76,6 +76,10 @@ Os demais terrenos (água, esteiras direcionadas, bônus, fonte) estão definido
 | Entrega do material | 26/11/2026 |
 | Apresentações | 26/11 (turma A), 01/12 (turma B), 03/12 (remanescentes) |
 
+## Declaração de uso de IA
+
+[Documento de declaração de uso de IA](https://docs.google.com/document/d/1a_AzeSNbBuQOpufTuFRQ0rQSwkhV5YSE/edit?usp=sharing&ouid=115450337528857953689&rtpof=true&sd=true)
+
 ## Integrantes
 
 Amanda Luz
