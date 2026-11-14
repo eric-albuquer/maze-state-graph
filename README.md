@@ -42,7 +42,15 @@ relativo ao diretório atual).
 
 ```bash
 python -m src.ui            # interface gráfica
-python -m test.test     # testes
+```
+
+## Testes dos algoritmos
+
+Como rodar cada teste de cada algoritmo:
+
+```bash
+
+python -m pytest test/test_algorithms/test_bfs.py
 ```
 
 ## Formato dos mapas
