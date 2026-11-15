@@ -9,7 +9,7 @@ import pygame
 from src.map.map import *
 from src.map.map_generator import MapGenerationCancelled
 from src.settings.display import *
-from src.sprites import tile_sprites, player_sprite
+from src.sprites import tile_sprites, player_sprite, get_sprite, FLOOR
 from src.settings.map_setup import MAPS, GENERATED, GENERATOR_PARAMS, load_map
 from src.settings.solver_setup import SOLVER_NAMES, get_solver
 
@@ -50,6 +50,10 @@ def make_font(size: int) -> pygame.font.Font:
     return pygame.font.SysFont("monaco,menlo,couriernew", max(6, int(size * 0.75)), bold=True)
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – constante do tamanho das letras nas células
+# Tamanho das letras nas células (porta, chave, início), como fração da célula
+LETTER_SCALE = 0.5
+
 title_font = make_font(80)
 item_font = make_font(44)
 hint_font = make_font(28)
@@ -69,6 +73,8 @@ def draw_box(rect, selected=False, bg=COLOR_MENU_BG, border=None, shadow=True):
 
 # [IA] Claude Code (Claude Sonnet 5.5) – código em pygame da barra de velocidade (escala logarítmica, ligada aos atalhos CIMA/BAIXO)
 MIN_SPEED, MAX_SPEED = 1, 10000
+# [IA] Claude Code (Claude Sonnet 5.5) – velocidade inicial da simulação
+DEFAULT_SPEED = 8  # passos por segundo ao iniciar a simulação
 
 
 def draw_speed_bar(rect: pygame.Rect, speed: int):
@@ -692,7 +698,7 @@ class Playback:
         """Desenha uma vez o mapa estático (tiles, bordas, letras) em cs x cs por célula."""
         map = self.map
         bg = pygame.Surface((map.cols * cs, map.rows * cs), 0, 24)  # sem canal alfa
-        size = max(8, int(cs * 0.8))
+        size = max(8, int(cs * LETTER_SCALE))
         if size not in self._fonts:
             self._fonts[size] = make_font(size)
         font = self._fonts[size]
@@ -738,6 +744,13 @@ class Playback:
         ox_screen, oy_screen = ox, oy
         ox = oy = 0
 
+        # [IA] Claude Code (Claude Sonnet 5.5) – o fantasma da saída some quando o Pac-Man chega ao fim
+        # Pac-Man chegou ao fim: o fantasma some (redesenha só o chão na célula final)
+        if USE_SPRITES and self.finished and self.solution and self.cell == self.map.end:
+            floor = get_sprite(FLOOR, cs)
+            if floor:
+                scene.blit(floor, (self.map.end[0] * cs, self.map.end[1] * cs))
+
         overlay = pygame.Surface((cs, cs), pygame.SRCALPHA)
 
         # [IA] Claude Code (Claude Sonnet 5.5) – código de desenho das iterações exploradas, com opacidade crescente por visita
@@ -778,6 +791,78 @@ class Playback:
             overlay.fill(COLOR_PLAYER)
             scene.blit(overlay, (px, py))
         screen.blit(scene, (ox_screen, oy_screen))
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – modos de ordenação da tabela comparativa (custo, iteração e passos)
+SORT_MODES = [("cost", "Custo"), ("iterations", "Iteração"), ("steps", "Passos")]
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – tabela comparativa em pygame (mesmas informações do pop-up), aberta com a tecla T quando todos terminam, ordenável por custo, iteração ou passos (tecla O)
+def draw_comparison_table(plays: list, colors: list, title_font, body_font, sort_by: str = "cost"):
+    """Tabela comparativa (as mesmas informações do pop-up) sobre a tela toda."""
+    dim = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    dim.fill((0, 0, 0, 170))
+    screen.blit(dim, (0, 0))
+
+    # ordena por menor custo, menos iterações ou menos passos; sem solução/erro no fim
+    def key(i):
+        p = plays[i]
+        if p.error or not p.solution:
+            return (1, 0, 0, i)
+        if sort_by == "iterations":
+            return (0, len(p.iterations), p.cost, i)
+        if sort_by == "steps":
+            return (0, len(p.solution), p.cost, i)
+        return (0, p.cost, len(p.iterations), i)
+
+    order = sorted(range(len(plays)), key=key)
+    headers = ["Algoritmo", "Iterações", "Passos", "Custo total"]
+    rows = []
+    for i in order:
+        p = plays[i]
+        if p.error:
+            rows.append((i, [p.label, "-", "-", "erro"]))
+        elif not p.solution:
+            rows.append((i, [p.label, str(len(p.iterations)), "-", "sem solução"]))
+        else:
+            rows.append((i, [p.label, str(len(p.iterations)), str(len(p.solution)), str(p.cost)]))
+
+    line_h = body_font.get_linesize() + 14
+    w = min(WIDTH - 80, 980)
+    h = title_font.get_linesize() + line_h * (len(rows) + 3) + 50
+    box = pygame.Rect(0, 0, w, h)
+    box.center = (WIDTH // 2, HEIGHT // 2)
+    draw_box(box, bg=(6, 6, 20), border=COLOR_ACCENT)
+
+    t = title_font.render("Comparação dos algoritmos", True, COLOR_ACCENT)
+    screen.blit(t, t.get_rect(centerx=box.centerx, y=box.y + 14))
+    y = box.y + 14 + title_font.get_linesize() + 6
+
+    # seletor de ordenação (a opção ativa fica em destaque)
+    x = box.x + int(w * 0.04)
+    t = body_font.render("Ordenar por (O):", True, COLOR_HINT)
+    screen.blit(t, (x, y))
+    x += t.get_width() + 20
+    for mode, text in SORT_MODES:
+        active = mode == sort_by
+        t = body_font.render(("[x] " if active else "[ ] ") + text, True, COLOR_ACCENT if active else COLOR_HINT)
+        screen.blit(t, (x, y))
+        x += t.get_width() + 24
+    y += line_h
+
+    fracs = [0.04, 0.34, 0.54, 0.74]  # início de cada coluna
+    cols_x = [box.x + int(w * f) for f in fracs]
+    for x, text in zip(cols_x, headers):
+        screen.blit(body_font.render(text, True, COLOR_HINT), (x, y))
+    y += line_h
+    pygame.draw.line(screen, COLOR_BOX_BORDER, (box.x + 14, y - 8), (box.right - 14, y - 8), 2)
+    for i, cells in rows:
+        for c, (x, text) in enumerate(zip(cols_x, cells)):
+            col = colors[i % len(colors)] if c == 0 else COLOR_MENU_TEXT
+            screen.blit(body_font.render(text, True, col), (x, y))
+        y += line_h
+    t = body_font.render("O: ordenação  •  T/ESC/clique: fechar", True, COLOR_HINT)
+    screen.blit(t, t.get_rect(centerx=box.centerx, y=box.bottom - line_h))
 
 
 # [IA] Claude Code (Claude Sonnet 5.5) – pop-up em pygame ao fim do algoritmo, com iterações, passos e custo
@@ -834,9 +919,12 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
     popup_title_font = make_font(max(32, int(HEIGHT * 0.05)))
     popup_body_font = make_font(max(24, int(HEIGHT * 0.036)))
 
-    speed = FPS
+    speed = DEFAULT_SPEED
     paused = False
     step_accumulator = 0.0
+    # [IA] Claude Code (Claude Sonnet 5.5) – estado da tabela comparativa (tecla T)
+    show_table = False
+    table_sort = "cost"  # um de SORT_MODES: cost, iterations ou steps
 
     while True:
         dt = clock.tick(FPS) / 1000.0
@@ -847,7 +935,19 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return
+                    if show_table:
+                        show_table = False
+                    else:
+                        return
+                # [IA] Claude Code (Claude Sonnet 5.5) – O alterna a ordenação da tabela (custo → iteração → passos)
+                elif event.key == pygame.K_o:
+                    if show_table:
+                        modes = [m for m, _ in SORT_MODES]
+                        table_sort = modes[(modes.index(table_sort) + 1) % len(modes)]
+                # [IA] Claude Code (Claude Sonnet 5.5) – T abre/fecha a tabela comparativa quando todos terminaram
+                elif event.key == pygame.K_t:
+                    if quad and all(p.finished for p in plays):
+                        show_table = not show_table
                 elif event.key == pygame.K_SPACE:
                     paused = not paused
                 elif event.key in (pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
@@ -862,10 +962,14 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                         p.reset()
                     paused = False
                     step_accumulator = 0.0
+                    show_table = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for p in plays:
-                    p.popup_open = False
+                if show_table:
+                    show_table = False
+                else:
+                    for p in plays:
+                        p.popup_open = False
 
         if not paused:
             step_accumulator += dt * speed
@@ -878,10 +982,13 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
         screen.fill(COLOR_BACKGROUND)
 
         if quad:
-            half_w, half_h = WIDTH // 2, HEIGHT // 2
+            # [IA] Claude Code (Claude Sonnet 5.5) – barra de velocidade movida para uma faixa no topo, sem cobrir os quadrantes
+            # faixa no topo reservada para a barra de velocidade (sempre visível, não cobre os quadrantes)
+            bar_strip_h = 56
+            half_w, half_h = WIDTH // 2, (HEIGHT - bar_strip_h) // 2
             header_h = int(quad_font.get_height() * 2.3)
             for idx, p in enumerate(plays):
-                quadrant = pygame.Rect((idx % 2) * half_w, (idx // 2) * half_h, half_w, half_h)
+                quadrant = pygame.Rect((idx % 2) * half_w, bar_strip_h + (idx // 2) * half_h, half_w, half_h)
                 color = QUAD_COLORS[idx % len(QUAD_COLORS)]
                 draw_box(quadrant, bg=COLOR_MENU_BG, border=color, shadow=False)
 
@@ -900,11 +1007,17 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 if p.finished and p.popup_open:
                     draw_popup(p, quadrant, color, popup_title_font, popup_body_font)
             bar_w = min(360, WIDTH // 4)
-            bar_box = pygame.Rect(WIDTH // 2 - bar_w // 2, HEIGHT // 2 - 24, bar_w, 48)
+            bar_box = pygame.Rect(WIDTH // 2 - bar_w // 2, (bar_strip_h - 48) // 2, bar_w, 48)
             draw_box(bar_box, bg=(6, 6, 20), border=COLOR_ACCENT)
             label = quad_font.render(f"Velocidade: {speed} passos/s", True, COLOR_MENU_TEXT)
             screen.blit(label, label.get_rect(midtop=(bar_box.centerx, bar_box.y + 5)))
             draw_speed_bar(pygame.Rect(bar_box.x + 12, bar_box.bottom - 18, bar_w - 24, 10), speed)
+            # [IA] Claude Code (Claude Sonnet 5.5) – aviso e desenho da tabela comparativa
+            if all(p.finished for p in plays):
+                hint = quad_font.render("T: tabela comparativa", True, COLOR_ACCENT)
+                screen.blit(hint, hint.get_rect(midleft=(bar_box.right + 24, bar_box.centery)))
+            if show_table:
+                draw_comparison_table(plays, QUAD_COLORS, popup_title_font, popup_body_font, table_sort)
         else:
             p = plays[0]
             map_area = pygame.Rect(MENU_WIDTH, 0, WIDTH - MENU_WIDTH, HEIGHT)
@@ -1002,6 +1115,12 @@ def main():
     solver_choices = list(SOLVER_NAMES)
     solver_labels = [SOLVER_NAMES[c] for c in solver_choices]
     compare_label = "Comparar Algoritmos"
+    # [IA] Claude Code (Claude Sonnet 5.5) – A* como última opção na seleção de 4 algoritmos (fora do padrão marcado)
+    # Ordem na seleção de 4: A* por último, então o padrão (4 primeiros) o exclui
+    compare_order = [i for i, c in enumerate(solver_choices) if c != 1] + [
+        i for i, c in enumerate(solver_choices) if c == 1
+    ]
+    compare_labels = [solver_labels[i] for i in compare_order]
 
     while True:
         m = menu_screen("Escolha o mapa", map_labels, previews=map_previews)
@@ -1036,12 +1155,13 @@ def main():
             if s == len(solver_labels):
                 picked = select_screen(
                     "Escolha 4 Algoritmos",
-                    solver_labels,
+                    compare_labels,
                     count=4,
                     subtitle=f"Mapa: {map_labels[m]}",
                 )
                 if picked is None:
                     continue
+                picked = [compare_order[i] for i in picked]
             else:
                 picked = [s]
 

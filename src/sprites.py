@@ -8,24 +8,24 @@ from src.map.map_nodes import *
 SPRITES_DIR = Path(__file__).resolve().parent.parent / "sprites"
 
 # Cada tipo de célula vira uma lista de camadas (da de baixo para a de cima).
-FLOOR = "luxuria/chao.png"
+FLOOR = "chao.png"
 TILE_LAYERS = {
-    MapWall: ["luxuria/parede.png"],
+    MapWall: ["parede.png"],
     MapDotFloor: [FLOOR],
     MapStart: [FLOOR],
-    MapEnd: [FLOOR, "icon.png"],
-    MapMud: ["gula/lama.png"],
-    MapWater: ["common_cells/ice.png"],
-    MapSource: [FLOOR, "common_cells/fonte.png"],
-    MapBonus: [FLOOR, "itens/coin1.png"],
-    MapKey: [FLOOR, "itens/newKey.png"],
-    MapPort: ["common_cells/cobblestone.png"],
+    MapEnd: [FLOOR, "saida.png"],
+    MapMud: [FLOOR, "lama.png"],
+    MapWater: [FLOOR, "agua.png"],
+    MapSource: [FLOOR, "fonte.png"],
+    MapBonus: [FLOOR, "bonus.png"],
+    MapKey: [FLOOR, "chave.png"],
+    MapPort: ["porta.png"],
 }
 ARROWS = {
-    (0, -1): "luxuria/UpArrow1.png",
-    (0, 1): "luxuria/DownArrow1.png",
-    (-1, 0): "luxuria/LeftArrow1.png",
-    (1, 0): "luxuria/RightArrow1.png",
+    (0, -1): "seta_cima.png",
+    (0, 1): "seta_baixo.png",
+    (-1, 0): "seta_esquerda.png",
+    (1, 0): "seta_direita.png",
 }
 PLAYER_NAMES = {
     (0, -1): "Up",
@@ -33,6 +33,24 @@ PLAYER_NAMES = {
     (-1, 0): "Left",
     (1, 0): "Right",
 }
+
+# [IA] Claude Code (Claude Sonnet 5.5) – escala de exibição por sprite (número ou largura/altura), centralizada na célula
+# Fração da célula que cada sprite ocupa (1.0 = célula inteira; padrão se omitido).
+# Chave = caminho relativo a sprites/. O sprite é centralizado na célula.
+# Aceita um número (mesma escala nos dois eixos) ou (largura, altura).
+SPRITE_SCALE = {
+    "bonus.png": 0.7,
+    "chave.png": 0.8,
+    "fonte.png": 0.9,
+    "saida.png": 0.8,
+    "lama.png": 0.6,
+    "agua.png": (1.0, 0.50),  # (largura, altura)
+    "seta_cima.png": 0.5,
+    "seta_baixo.png": 0.5,
+    "seta_esquerda.png": 0.5,
+    "seta_direita.png": 0.5,
+}
+DEFAULT_PLAYER_SCALE = 0.8  # aplicado a pacman/*.png
 
 _originals: dict[str, pygame.Surface | None] = {}
 _scaled: dict[tuple[str, int], pygame.Surface | None] = {}
@@ -52,7 +70,19 @@ def get_sprite(name: str, size: int) -> pygame.Surface | None:
     key = (name, size)
     if key not in _scaled:
         img = _load(name)
-        _scaled[key] = pygame.transform.smoothscale(img, (size, size)) if img else None
+        if img is None:
+            _scaled[key] = None
+        else:
+            scale = SPRITE_SCALE.get(name, DEFAULT_PLAYER_SCALE if name.startswith("pacman/") else 1.0)
+            sx, sy = scale if isinstance(scale, tuple) else (scale, scale)
+            w, h = max(1, round(size * sx)), max(1, round(size * sy))
+            scaled = pygame.transform.smoothscale(img, (w, h))
+            if (w, h) == (size, size):
+                _scaled[key] = scaled
+            else:
+                canvas = pygame.Surface((size, size), pygame.SRCALPHA)
+                canvas.blit(scaled, ((size - w) // 2, (size - h) // 2))
+                _scaled[key] = canvas
     return _scaled[key]
 
 
