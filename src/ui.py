@@ -9,6 +9,7 @@ import pygame
 from src.map.map import *
 from src.map.map_generator import MapGenerationCancelled
 from src.settings.display import *
+from src.visualizations import run_tree_screen
 from src.sprites import tile_sprites, player_sprite, get_sprite, FLOOR
 from src.settings.map_setup import MAPS, GENERATED, GENERATOR_PARAMS, load_map
 from src.settings.solver_setup import SOLVER_NAMES, get_solver
@@ -630,6 +631,7 @@ class Playback:
         self.solution = list(solution.path) if solution else []  # o caminho final
         self.error = error
         self.label = label
+        self.tree_parent = getattr(solution, "parent", None) if solution else None  # árvore de busca (BFS)
         self._fonts = {}
         self._bg = None
         self._items = None
@@ -1075,6 +1077,18 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 elif event.key == pygame.K_l:
                     for p in plays:
                         p.layer_mode = not p.layer_mode
+                # [IA] Claude Code (Claude Sonnet 5.5) – B abre a árvore de busca do BFS (se algum algoritmo da tela a tiver)
+                elif event.key == pygame.K_b:
+                    tree_play = next((p for p in plays if p.tree_parent), None)
+                    if tree_play:
+                        tree_play.set_layers(shared)
+                        rows = build_layer_legend(tree_play, quad_font, WIDTH - 20)
+                        run_tree_screen(
+                            screen, clock, FPS, quad_font, tree_play.tree_parent, tree_play.solution,
+                            tree_play.layer_color, f"Árvore {tree_play.label} - {map_label}",
+                            legend_draw=lambda y, r=rows: draw_layer_legend(r, quad_font, WIDTH // 2, y),
+                            legend_h=layer_legend_height(rows, quad_font),
+                        )
                 elif event.key == pygame.K_SPACE:
                     paused = not paused
                 elif event.key in (pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
@@ -1145,6 +1159,9 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
             if all(p.finished for p in plays) and not plays[0].layer_mode:
                 hint = quad_font.render("T: tabela comparativa", True, COLOR_ACCENT)
                 screen.blit(hint, hint.get_rect(midleft=(bar_box.right + 24, bar_box.centery)))
+            if not plays[0].layer_mode and any(p.tree_parent for p in plays):
+                hint = quad_font.render("B: árvore BFS", True, COLOR_ACCENT)
+                screen.blit(hint, hint.get_rect(midright=(bar_box.left - 24, bar_box.centery)))
             # [IA] Claude Code (Claude Sonnet 5.5) – aviso de que a cor por camada está ativa
             if plays[0].layer_mode:
                 banner = draw_layer_banner(quad_font, bar_box.right + 16, bar_box.centery, "midleft", short=True)
@@ -1169,6 +1186,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 "ESPACO: pausar",
                 "R: reiniciar",
                 "L: cor por camada",
+            ) + (("B: árvore de busca",) if plays[0].tree_parent else ()) + (
                 "CIMA/BAIXO: velocidade",
                 "ENTER: fechar aviso",
                 "ESC: voltar",

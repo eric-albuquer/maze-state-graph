@@ -24,7 +24,7 @@ def solve_bfs(map: Map) -> SolverSolution:
             reverse_path_map[adj_state] = state
             if adj_state.pos == map.end:
                 path = get_path(reverse_path_map, adj_state)
-                return SolverSolution(iterations, path)
+                return SolverSolution(iterations, path, reverse_path_map)
             queue.append(adj_state)
 
-    return SolverSolution(iterations)
+    return SolverSolution(iterations, parent=reverse_path_map)
