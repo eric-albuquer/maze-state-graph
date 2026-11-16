@@ -632,14 +632,31 @@ class Playback:
         self.label = label
         self._fonts = {}
         self._bg = None
+        self._items = None
         self._scene = None
+        # [IA] Claude Code (Claude Sonnet 5.5) – modo cor por camada: índice de cada conjunto de chaves
+        self.layer_mode = False
+        layers = {s.keys for s in self.iterations} | {s.keys for s in self.solution}
+        self.layers = sorted(layers, key=lambda k: (len(k), sorted(k)))
+        self.set_layers(self.layers)
         self.reset()
+
+    def set_layers(self, layers):
+        """Usa a mesma lista de camadas em todas as animações (mesma cor = mesmas chaves)."""
+        self.layers = list(layers)
+        self.layer_index = {k: i for i, k in enumerate(self.layers)}
+        self._layer_colors = layer_palette(len(self.layers))
+
+    def layer_color(self, keys) -> tuple[int, int, int]:
+        return self._layer_colors[self.layer_index.get(keys, 0)] if self._layer_colors else LAYER_COLORS[0]
 
     def reset(self):
         self.phase = "iterations" if self.iterations else "path"
         self.iter_n = 0
         self.iter_cell = None
         self.iter_visits = {}
+        self.iter_layer = {}  # célula -> chaves da última iteração nela
+        self.visit_layer = {}  # célula -> chaves do último passo do caminho nela
         self.step_n = 0
         self.cost = 0
         self.visits = {}
@@ -657,6 +674,7 @@ class Playback:
         if self.phase == "iterations":
             # uma iteração por tick, igual para todos os algoritmos
             self.iter_cell = self.iterations[self.iter_n].pos
+            self.iter_layer[self.iter_cell] = self.iterations[self.iter_n].keys
             self.iter_visits[self.iter_cell] = self.iter_visits.get(self.iter_cell, 0) + 1
             self.iter_n += 1
             if self.iter_n >= len(self.iterations):
@@ -675,6 +693,7 @@ class Playback:
         x, y = self.cell
         self.cost += self.map.matrix[y][x].cost
         self.visits[self.cell] = self.visits.get(self.cell, 0) + 1
+        self.visit_layer[self.cell] = self.keys
         self.step_n += 1
         if self.step_n == len(self.solution):
             self.finished = True
@@ -720,6 +739,35 @@ class Playback:
                     bg.blit(text, text.get_rect(center=cell_rect.center))
         return bg
 
+    # [IA] Claude Code (Claude Sonnet 5.5) – itens (chave, porta, bônus, etc.) numa camada própria, desenhada por cima das cores da exploração e do caminho
+    def _build_items(self, cs: int):
+        """Retorna (superfície só com os itens, sprite da saída). Fundo transparente."""
+        map = self.map
+        items = pygame.Surface((map.cols * cs, map.rows * cs), pygame.SRCALPHA)
+        size = max(8, int(cs * LETTER_SCALE))
+        if size not in self._fonts:
+            self._fonts[size] = make_font(size)
+        font = self._fonts[size]
+        end_sprite = None
+        for i, row in enumerate(map.matrix):
+            for j, cell in enumerate(row):
+                if isinstance(cell, (MapWall, MapDotFloor)):
+                    continue
+                cell_rect = pygame.Rect(j * cs, i * cs, cs, cs)
+                layers = tile_sprites(cell, cs) if USE_SPRITES else None
+                if layers:
+                    # o chão (1ª camada) fica no fundo; só o que está por cima é "item"
+                    top = layers if isinstance(cell, MapPort) else layers[1:]
+                    if isinstance(cell, MapEnd):
+                        end_sprite = top
+                        continue
+                    for layer in top:
+                        items.blit(layer, cell_rect)
+                    if isinstance(cell, (MapKey, MapPort, MapStart)):
+                        text = font.render(repr(cell), True, (255, 255, 255))
+                        items.blit(text, text.get_rect(center=cell_rect.center))
+        return items, end_sprite
+
     def draw_map(self, rect: pygame.Rect):
         map = self.map
         x, y = self.cell
@@ -732,6 +780,7 @@ class Playback:
 
         if self._bg is None or self._bg[0] != cs:
             self._bg = (cs, self._build_background(cs))
+            self._items = self._build_items(cs)
 
         # [IA] Claude Code (Claude Sonnet 5.5) – código de desenho do rastro com opacidade progressiva (composição em superfície sem alfa)
         # A janela do macOS (cocoa) tem canal alfa: blitar translúcido direto nela
@@ -761,14 +810,14 @@ class Playback:
             self._fonts[count_size_it] = make_font(count_size_it)
         for (j, i), v in self.iter_visits.items():
             alpha = min(ITER_ALPHA_FIRST + (v - 1) * ITER_ALPHA_STEP, ITER_ALPHA_MAX)
+            if self.layer_mode:
+                r, g, b = self.layer_color(self.iter_layer.get((j, i), frozenset()))
+                alpha = LAYER_ITER_ALPHA
             overlay.fill((r, g, b, alpha))
             scene.blit(overlay, (ox + j * cs, oy + i * cs))
             if v > 1:
                 text = self._fonts[count_size_it].render(f"{v}x", True, (200, 225, 255))
                 scene.blit(text, text.get_rect(bottomleft=(ox + j * cs + 2, oy + (i + 1) * cs - 1)))
-        if self.iter_cell is not None:  # célula sendo explorada agora
-            j, i = self.iter_cell
-            pygame.draw.rect(scene, COLOR_ACCENT, (ox + j * cs, oy + i * cs, cs, cs), width=max(2, cs // 10))
 
         count_size = max(8, int(cs * 0.45))
         if count_size not in self._fonts:
@@ -777,11 +826,24 @@ class Playback:
         for (j, i), v in self.visits.items():
             alpha = min(VISIT_ALPHA_FIRST + (v - 1) * VISIT_ALPHA_STEP, VISIT_ALPHA_MAX)
             r, g, b = VISIT_COLORS[min(v, len(VISIT_COLORS)) - 1]
+            if self.layer_mode:
+                r, g, b = self.layer_color(self.visit_layer.get((j, i), frozenset()))
+                alpha = LAYER_PATH_ALPHA
             overlay.fill((r, g, b, alpha))
             scene.blit(overlay, (ox + j * cs, oy + i * cs))
             if v > 1:  # passou de novo por aqui: mostra quantas vezes
                 text = count_font.render(f"{v}x", True, (255, 255, 255))
                 scene.blit(text, text.get_rect(topright=(ox + (j + 1) * cs - 2, oy + i * cs + 1)))
+
+        # itens por cima das cores (a saída some quando o Pac-Man chega nela)
+        items, end_sprite = self._items
+        scene.blit(items, (0, 0))
+        if end_sprite and not (self.finished and self.solution and self.cell == self.map.end):
+            for layer in end_sprite:
+                scene.blit(layer, (map.end[0] * cs, map.end[1] * cs))
+        if self.iter_cell is not None:  # célula sendo explorada agora
+            j, i = self.iter_cell
+            pygame.draw.rect(scene, COLOR_ACCENT, (ox + j * cs, oy + i * cs, cs, cs), width=max(2, cs // 10))
 
         px, py = ox + self.cell[0] * cs, oy + self.cell[1] * cs
         sprite = player_sprite(self.direction, self.step_n, cs) if USE_SPRITES else None
@@ -905,6 +967,53 @@ QUAD_COLORS = [(52, 152, 219), (46, 204, 113), (241, 196, 15), (231, 76, 60)]
 
 
 # [IA] Claude Code (Claude Sonnet 5.5) – laço de exibição em pygame: painel lateral, 4 quadrantes, barra de velocidade, pausa/reinício e pop-up
+# [IA] Claude Code (Claude Sonnet 5.5) – texto de topo que avisa que o mapa está colorido por camada (conjunto de chaves)
+def draw_layer_banner(font, x: int, y: int, anchor: str, short: bool = False) -> pygame.Rect:
+    label = "Camadas (L: desligar)" if short else "Camadas: cor = chaves coletadas (L: desligar)"
+    text = font.render(label, True, COLOR_ACCENT)
+    box = text.get_rect(**{anchor: (x, y)}).inflate(20, 10)
+    draw_box(box, bg=(6, 6, 20), border=COLOR_ACCENT, shadow=False)
+    screen.blit(text, text.get_rect(center=box.center))
+    return box
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – legenda das camadas que quebra em linhas conforme a largura disponível
+def build_layer_legend(play: "Playback", font, max_width: int) -> list[list]:
+    """Divide os itens (quadrado de cor + nome) em linhas que cabem em max_width."""
+    size = font.get_height()
+    gap = 18
+    rows, row, row_w = [], [], 0
+    for keys in play.layers:
+        text = font.render("".join(sorted(keys)) or "sem chaves", True, COLOR_MENU_TEXT)
+        item_w = size + 6 + text.get_width()
+        if row and row_w + gap + item_w > max_width:
+            rows.append(row)
+            row, row_w = [], 0
+        row_w += (gap if row else 0) + item_w
+        row.append((play.layer_color(keys), text, item_w))
+    if row:
+        rows.append(row)
+    return rows
+
+
+def layer_legend_height(rows: list[list], font) -> int:
+    return len(rows) * (font.get_height() + 4)
+
+
+def draw_layer_legend(rows: list[list], font, center_x: int, y: int, left: int | None = None):
+    """Centralizada em center_x, ou alinhada à esquerda em `left` se informado."""
+    size = font.get_height()
+    gap = 18
+    for row in rows:
+        total = sum(w for _, _, w in row) + gap * (len(row) - 1)
+        x = left if left is not None else center_x - total // 2
+        for color, text, w in row:
+            pygame.draw.rect(screen, color, (x, y, size, size))
+            screen.blit(text, (x + size + 6, y))
+            x += w + gap
+        y += size + 4
+
+
 def run_simulation(map: Map, plays: list[Playback], map_label: str):
     """Anima 1 solução (painel lateral) ou 4 (tela dividida em quadrantes).
     Retorna ao pressionar ESC."""
@@ -918,6 +1027,20 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
     quad_font = make_font(max(20, int(HEIGHT * 0.032)))
     popup_title_font = make_font(max(32, int(HEIGHT * 0.05)))
     popup_body_font = make_font(max(24, int(HEIGHT * 0.036)))
+
+    # [IA] Claude Code (Claude Sonnet 5.5) – camadas compartilhadas entre os algoritmos, para a mesma cor significar as mesmas chaves
+    shared = sorted({k for p in plays for k in p.layers}, key=lambda k: (len(k), sorted(k)))
+    for p in plays:
+        p.set_layers(shared)
+    # legenda das camadas: quebra em linhas conforme o espaço (mapa único: área do mapa; quadrantes: tela toda)
+    # quadrantes: [velocidade] [aviso] [legenda] lado a lado na faixa do topo; mapa único: abaixo do aviso
+    quad_bar_w = min(360, WIDTH // 4)
+    quad_banner_w = quad_font.size("Camadas (L: desligar)")[0] + 20
+    quad_legend_left = 10 + quad_bar_w + 16 + quad_banner_w + 16
+    legend_width = (WIDTH - quad_legend_left - 10) if quad else (WIDTH - MENU_WIDTH - 20)
+    legend_rows = build_layer_legend(plays[0], quad_font, legend_width)
+    legend_h = layer_legend_height(legend_rows, quad_font) + 8
+    quad_strip_layers = max(56, legend_h + 8)  # altura da faixa do topo no modo camadas
 
     speed = DEFAULT_SPEED
     paused = False
@@ -948,6 +1071,10 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 elif event.key == pygame.K_t:
                     if quad and all(p.finished for p in plays):
                         show_table = not show_table
+                # [IA] Claude Code (Claude Sonnet 5.5) – L alterna a cor por camada (conjunto de chaves)
+                elif event.key == pygame.K_l:
+                    for p in plays:
+                        p.layer_mode = not p.layer_mode
                 elif event.key == pygame.K_SPACE:
                     paused = not paused
                 elif event.key in (pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
@@ -984,7 +1111,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
         if quad:
             # [IA] Claude Code (Claude Sonnet 5.5) – barra de velocidade movida para uma faixa no topo, sem cobrir os quadrantes
             # faixa no topo reservada para a barra de velocidade (sempre visível, não cobre os quadrantes)
-            bar_strip_h = 56
+            bar_strip_h = quad_strip_layers if plays[0].layer_mode else 56
             half_w, half_h = WIDTH // 2, (HEIGHT - bar_strip_h) // 2
             header_h = int(quad_font.get_height() * 2.3)
             for idx, p in enumerate(plays):
@@ -1006,22 +1133,34 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 p.draw_map(pygame.Rect(quadrant.x + 4, quadrant.y + header_h, half_w - 8, half_h - header_h - 4))
                 if p.finished and p.popup_open:
                     draw_popup(p, quadrant, color, popup_title_font, popup_body_font)
-            bar_w = min(360, WIDTH // 4)
-            bar_box = pygame.Rect(WIDTH // 2 - bar_w // 2, (bar_strip_h - 48) // 2, bar_w, 48)
+            bar_w = quad_bar_w
+            # modo camadas: velocidade vai para a esquerda, com o aviso e a legenda ao lado
+            bar_x = 10 if plays[0].layer_mode else WIDTH // 2 - bar_w // 2
+            bar_box = pygame.Rect(bar_x, (56 - 48) // 2, bar_w, 48)
             draw_box(bar_box, bg=(6, 6, 20), border=COLOR_ACCENT)
             label = quad_font.render(f"Velocidade: {speed} passos/s", True, COLOR_MENU_TEXT)
             screen.blit(label, label.get_rect(midtop=(bar_box.centerx, bar_box.y + 5)))
             draw_speed_bar(pygame.Rect(bar_box.x + 12, bar_box.bottom - 18, bar_w - 24, 10), speed)
             # [IA] Claude Code (Claude Sonnet 5.5) – aviso e desenho da tabela comparativa
-            if all(p.finished for p in plays):
+            if all(p.finished for p in plays) and not plays[0].layer_mode:
                 hint = quad_font.render("T: tabela comparativa", True, COLOR_ACCENT)
                 screen.blit(hint, hint.get_rect(midleft=(bar_box.right + 24, bar_box.centery)))
+            # [IA] Claude Code (Claude Sonnet 5.5) – aviso de que a cor por camada está ativa
+            if plays[0].layer_mode:
+                banner = draw_layer_banner(quad_font, bar_box.right + 16, bar_box.centery, "midleft", short=True)
+                draw_layer_legend(legend_rows, quad_font, 0, 6, left=banner.right + 16)
             if show_table:
                 draw_comparison_table(plays, QUAD_COLORS, popup_title_font, popup_body_font, table_sort)
         else:
             p = plays[0]
             map_area = pygame.Rect(MENU_WIDTH, 0, WIDTH - MENU_WIDTH, HEIGHT)
-            p.draw_map(map_area)
+            if p.layer_mode:
+                banner = draw_layer_banner(quad_font, map_area.centerx, 8, "midtop")
+                draw_layer_legend(legend_rows, quad_font, map_area.centerx, banner.bottom + 6)
+                top = banner.bottom + 6 + legend_h
+                p.draw_map(pygame.Rect(map_area.x, top, map_area.width, map_area.height - top))
+            else:
+                p.draw_map(map_area)
 
             margin = 8
             pad = 14
@@ -1029,6 +1168,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
             shortcuts = (
                 "ESPACO: pausar",
                 "R: reiniciar",
+                "L: cor por camada",
                 "CIMA/BAIXO: velocidade",
                 "ENTER: fechar aviso",
                 "ESC: voltar",
