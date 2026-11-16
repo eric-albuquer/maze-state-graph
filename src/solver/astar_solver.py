@@ -18,7 +18,7 @@ def solve_astar(map: Map) -> SolverSolution:
     h_start = heuristic(map.start, map.end)
     heap = [(h_start, 0, start_state)]
 
-    while heap:
+    while heap and len(iterations) < map.stats.estimated_states:
         _, cost, state = heapq.heappop(heap)
 
         if cost > best_cost_map.get(state, float("inf")):

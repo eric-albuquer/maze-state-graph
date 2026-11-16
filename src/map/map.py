@@ -24,6 +24,8 @@ class MapStats:
         self.floor_count = floor_count
         self.wall_count = wall_count
 
+        self.estimated_states = self.floor_count * (2 ** self.bonus_count) * (2 ** len(self.keys))
+
     def __repr__(self):
         return f""""
 -----STATS------
