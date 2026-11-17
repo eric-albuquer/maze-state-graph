@@ -50,7 +50,10 @@ def solve_bellman_ford(map: Map) -> SolverSolution:
             new_cost = adj_state_cost + cost
             if new_cost >= best_cost_map.get(adj_state, float("inf")):
                 continue
-            raise ValueError(f"Infinite cicle detected: {state} -> {adj_state}")
+            iterations.append(state)
+            iterations.append(adj_state)
+            return SolverSolution(iterations, msg=f"Infinite cicle detected: {state} -> {adj_state}")
+            #raise ValueError(f"Infinite cicle detected: {state} -> {adj_state}")
 
     if not end_state:
         return SolverSolution(iterations)

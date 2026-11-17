@@ -33,8 +33,9 @@ def solve_astar(map: Map) -> SolverSolution:
         adj = adj_states_with_cost(map, state)
 
         for adj_state, adj_state_cost in adj:
-            if adj_state_cost < 0:
-                return SolverSolution(iterations)
+            x, y = adj_state.pos
+            if isinstance(map.matrix[y][x], MapSource):
+                return SolverSolution(iterations, msg="Source detected")
             new_cost = adj_state_cost + cost
             if new_cost >= best_cost_map.get(adj_state, float("inf")):
                 continue

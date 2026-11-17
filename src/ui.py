@@ -630,6 +630,7 @@ class Playback:
         self.iterations = list(solution.iterations) if solution else []
         self.solution = list(solution.path) if solution else []  # o caminho final
         self.error = error
+        self.msg = getattr(solution, "msg", None) if solution else None
         self.label = label
         self.tree_parent = getattr(solution, "parent", None) if solution else None  # árvore de busca (BFS)
         self._fonts = {}
@@ -704,6 +705,8 @@ class Playback:
         if self.error:
             return "Erro"
         if self.finished:
+            if self.msg:
+                return "Aviso"
             return "Finalizado" if self.solution else "Sem solução"
         if paused:
             return "Pausado"
@@ -871,7 +874,7 @@ def draw_comparison_table(plays: list, colors: list, title_font, body_font, sort
     # ordena por menor custo, menos iterações ou menos passos; sem solução/erro no fim
     def key(i):
         p = plays[i]
-        if p.error or not p.solution:
+        if p.error or p.msg or not p.solution:
             return (1, 0, 0, i)
         if sort_by == "iterations":
             return (0, len(p.iterations), p.cost, i)
@@ -886,6 +889,8 @@ def draw_comparison_table(plays: list, colors: list, title_font, body_font, sort
         p = plays[i]
         if p.error:
             rows.append((i, [p.label, "-", "-", "erro"]))
+        elif p.msg:
+            rows.append((i, [p.label, str(len(p.iterations)), "-", "mensagem"]))
         elif not p.solution:
             rows.append((i, [p.label, str(len(p.iterations)), "-", "sem solução"]))
         else:
@@ -932,8 +937,28 @@ def draw_comparison_table(plays: list, colors: list, title_font, body_font, sort
 # [IA] Claude Code (Claude Sonnet 5.5) – pop-up em pygame ao fim do algoritmo, com iterações, passos e custo
 def draw_popup(p: Playback, area: pygame.Rect, color, title_font, body_font):
     """Caixa centralizada em `area` avisando que o algoritmo terminou."""
+    w = min(area.width - 20, max(280, int(area.width * 0.6)))
+    text_width = w - 32
+
+    def wrap(text):
+        lines = []
+        current = ""
+        for word in text.split():
+            candidate = f"{current} {word}".strip()
+            if current and body_font.size(candidate)[0] > text_width:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+        return lines or [""]
+
     if p.error:
-        title, lines = f"{p.label}: erro", [p.error[:50]]
+        title, lines = f"{p.label}: erro", wrap(p.error)
+    elif p.msg:
+        title = f"{p.label}: aviso"
+        lines = wrap(p.msg) + [f"Iterações: {len(p.iterations)}"]
     elif not p.solution:
         title = f"{p.label} terminou"
         lines = ["Sem solução para este mapa", f"Iterações: {len(p.iterations)}"]
@@ -944,9 +969,7 @@ def draw_popup(p: Playback, area: pygame.Rect, color, title_font, body_font):
             f"Passos: {len(p.solution)}",
             f"Custo total: {p.cost}",
         ]
-
     line_h = body_font.get_linesize()
-    w = min(area.width - 20, max(280, int(area.width * 0.6)))
     h = title_font.get_linesize() + line_h * (len(lines) + 1) + 30
     box = pygame.Rect(0, 0, w, h)
     box.center = area.center
@@ -1136,6 +1159,8 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 line1 = f"{p.label} - {p.status(paused)}"
                 if p.error:
                     line2 = p.error[:60]
+                elif p.msg and p.finished:
+                    line2 = p.msg[:60]
                 else:
                     keys = "".join(sorted(p.keys)) or "-"
                     line2 = f"{p.progress_text()}  Chaves {keys}"
@@ -1228,6 +1253,9 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 y += line_spacing
             if p.error:
                 put(p.error[:40], (231, 76, 60), x0, y)
+                y += line_spacing
+            elif p.msg and p.finished:
+                put(p.msg, (231, 76, 60), x0, y)
                 y += line_spacing
 
             put(f"Velocidade: {speed}/s", COLOR_MENU_TEXT, x0, y)
