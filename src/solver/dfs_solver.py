@@ -6,7 +6,7 @@ from src.solver.solver_common import *
 def solve_dfs(map: Map) -> SolverSolution:
     iterations = []
     start_state = MapState(map.start)
-    
+
     reverse_path_map = {start_state: None}
 
     stack = [start_state]
@@ -23,7 +23,7 @@ def solve_dfs(map: Map) -> SolverSolution:
             reverse_path_map[adj_state] = state
             if adj_state.pos == map.end:
                 path = get_path(reverse_path_map, adj_state)
-                return SolverSolution(iterations, path)
+                return SolverSolution(iterations, path, reverse_path_map)
             stack.append(adj_state)
 
-    return SolverSolution(iterations)
+    return SolverSolution(iterations, parent=reverse_path_map)

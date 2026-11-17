@@ -632,7 +632,7 @@ class Playback:
         self.error = error
         self.msg = getattr(solution, "msg", None) if solution else None
         self.label = label
-        self.tree_parent = getattr(solution, "parent", None) if solution else None  # árvore de busca (BFS)
+        self.tree_parent = getattr(solution, "parent", None) if solution else None  # árvore de busca gerada por cada algoritmo
         self._fonts = {}
         self._bg = None
         self._items = None
@@ -1100,7 +1100,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 elif event.key == pygame.K_l:
                     for p in plays:
                         p.layer_mode = not p.layer_mode
-                # [IA] Claude Code (Claude Sonnet 5.5) – B abre a árvore de busca do BFS (se algum algoritmo da tela a tiver)
+                # [IA] Claude Code (Claude Sonnet 5.5) – B abre a árvore de busca do algoritmo selecionado (se algum da tela a tiver)
                 elif event.key == pygame.K_b:
                     tree_play = next((p for p in plays if p.tree_parent), None)
                     if tree_play:
@@ -1185,7 +1185,7 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
                 hint = quad_font.render("T: tabela comparativa", True, COLOR_ACCENT)
                 screen.blit(hint, hint.get_rect(midleft=(bar_box.right + 24, bar_box.centery)))
             if not plays[0].layer_mode and any(p.tree_parent for p in plays):
-                hint = quad_font.render("B: árvore BFS", True, COLOR_ACCENT)
+                hint = quad_font.render("B: árvore de busca", True, COLOR_ACCENT)
                 screen.blit(hint, hint.get_rect(midright=(bar_box.left - 24, bar_box.centery)))
             # [IA] Claude Code (Claude Sonnet 5.5) – aviso de que a cor por camada está ativa
             if plays[0].layer_mode:

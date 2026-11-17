@@ -52,11 +52,11 @@ def solve_bellman_ford(map: Map) -> SolverSolution:
                 continue
             iterations.append(state)
             iterations.append(adj_state)
-            return SolverSolution(iterations, msg=f"Infinite cicle detected: {state} -> {adj_state}")
+            return SolverSolution(iterations, parent=reverse_path_map, msg=f"Infinite cicle detected: {state} -> {adj_state}")
             #raise ValueError(f"Infinite cicle detected: {state} -> {adj_state}")
 
     if not end_state:
-        return SolverSolution(iterations)
+        return SolverSolution(iterations, parent=reverse_path_map)
 
     path = get_path(reverse_path_map, end_state)
-    return SolverSolution(iterations, path)
+    return SolverSolution(iterations, path, reverse_path_map)

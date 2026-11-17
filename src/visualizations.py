@@ -1,5 +1,5 @@
-# [IA] Claude Code (Claude Sonnet 5.5) – arquivo inteiro: layout e tela da árvore de busca do BFS em pygame
-"""Árvore de busca do BFS: cada nó é um estado (posição, chaves, bônus).
+# [IA] Claude Code (Claude Sonnet 5.5) – arquivo inteiro: layout e tela da árvore de busca em pygame
+"""Árvore de busca: cada nó é um estado (posição, chaves, bônus).
 
 O layout é uma função pura (`tree_layout`), sem pygame, para poder ser testada.
 A tela (`run_tree_screen`) recebe `screen`, `clock` e as fontes de quem a chama
@@ -29,7 +29,7 @@ class TreeLayout:
 def tree_layout(parent: dict) -> TreeLayout:
     """Layout por profundidade (árvore na horizontal): o nível do nó vai da esquerda para a direita;
     as folhas ficam em sequência na vertical, cada pai centralizado entre o primeiro e o último filho. `parent` mapeia estado -> pai
-    (raiz -> None) e deve listar cada pai antes dos filhos (ordem de descoberta do BFS)."""
+    (raiz -> None) e deve listar cada pai antes dos filhos (ordem de descoberta do algoritmo)."""
     children: dict = {}
     depth: dict = {}
     root = None

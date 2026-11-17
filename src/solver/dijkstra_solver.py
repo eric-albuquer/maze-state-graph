@@ -24,14 +24,14 @@ def solve_dijkstra(map: Map) -> SolverSolution:
 
         if state.pos == map.end:
             path = get_path(reverse_path_map, state)
-            return SolverSolution(iterations, path)
+            return SolverSolution(iterations, path, reverse_path_map)
 
         adj = adj_states_with_cost(map, state)
 
         for adj_state, adj_state_cost in adj:
             x, y = adj_state.pos
             if isinstance(map.matrix[y][x], MapSource):
-                return SolverSolution(iterations, msg="Source detected")
+                return SolverSolution(iterations, parent=reverse_path_map, msg="Source detected")
             new_cost = adj_state_cost + cost
             if new_cost >= best_cost_map.get(adj_state, float("inf")):
                 continue
@@ -39,4 +39,4 @@ def solve_dijkstra(map: Map) -> SolverSolution:
             best_cost_map[adj_state] = new_cost
             heapq.heappush(heap, (new_cost, adj_state))
 
-    return SolverSolution(iterations)
+    return SolverSolution(iterations, parent=reverse_path_map)
