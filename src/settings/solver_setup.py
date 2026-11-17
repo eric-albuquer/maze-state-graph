@@ -3,6 +3,10 @@ from src.solver.bfs_solver import solve_bfs
 from src.solver.dfs_solver import solve_dfs
 from src.solver.dijkstra_solver import solve_dijkstra
 from src.solver.bellman_ford_solver import solve_bellman_ford
+from src.solver.wall_solver import solve_wall_bfs
+from src.solver.xiter_solver import xiter_solver
+from src.solver.random_walk import random_walk
+from src.solver.portal_solver import portal_solver
 
 # Legenda do SOLVER_CHOICE (qual algoritmo resolve o mapa):
 #   1 = A*
@@ -10,8 +14,7 @@ from src.solver.bellman_ford_solver import solve_bellman_ford
 #   3 = DFS
 #   4 = Dijkstra
 #   5 = Bellman-Ford
-# Obs.: BFS, DFS, Dijkstra e Bellman-Ford ainda não foram implementados
-# (levantam NotImplementedError); por enquanto só o A* funciona.
+#   6 = Caminhada pelas paredes
 SOLVER_CHOICE = 5
 
 SOLVERS = {
@@ -20,6 +23,10 @@ SOLVERS = {
     3: solve_dfs,
     4: solve_dijkstra,
     5: solve_bellman_ford,
+    6: solve_wall_bfs,
+    7: xiter_solver,
+    8: random_walk,
+    9: portal_solver
 }
 
 
@@ -30,6 +37,10 @@ SOLVER_NAMES = {
     3: "DFS",
     4: "Dijkstra",
     5: "Bellman-Ford",
+    6: "BFS Wall",
+    7: "A* Hack",
+    8: "Random Walk",
+    9: "Portal Solver"
 }
 
 

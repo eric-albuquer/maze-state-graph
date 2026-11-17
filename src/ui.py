@@ -694,7 +694,8 @@ class Playback:
         if d != (0, 0):
             self.direction = d
         x, y = self.cell
-        self.cost += self.map.matrix[y][x].cost
+        cell = self.map.matrix[y][x]
+        self.cost += cell.cost if isinstance(cell, MapFloor) else 1
         self.visits[self.cell] = self.visits.get(self.cell, 0) + 1
         self.visit_layer[self.cell] = self.keys
         self.step_n += 1

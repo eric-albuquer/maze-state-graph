@@ -44,6 +44,9 @@ relativo ao diretório atual).
 python -m src.ui            # interface gráfica
 ```
 
+Na UI, o menu de algoritmos inclui **Caminhada pelas paredes**, que busca o
+caminho passando pelas células de parede até a saída.
+
 ## Testes dos algoritmos
 
 Como rodar cada teste de cada algoritmo:
