@@ -28,7 +28,9 @@ SAVE_GENERATED = 0
 
 MAPS = {}
 
-for idx, map_file in enumerate(sorted(maps_dir.iterdir())):
+# [IA] Claude Code (Claude Sonnet 5.5) – ignora subpastas (maps/update/) na lista de mapas
+# só arquivos: a subpasta maps/update/ (mapas importados) não entra nesta lista
+for idx, map_file in enumerate(sorted(p for p in maps_dir.iterdir() if p.is_file())):
     MAPS[idx + 1] = map_file.name
 
 # Legenda do GENERATOR_PARAMS (só vale quando MAP_CHOICE == GENERATED):

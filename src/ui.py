@@ -10,6 +10,9 @@ from src.map.map import *
 from src.map.map_generator import MapGenerationCancelled
 from src.settings.display import *
 from src.visualizations import run_tree_screen
+# [IA] Claude Code (Claude Sonnet 5.5) – imports do botão de importar mapa
+from src.file_picker import pick_map_file, FilePickerError
+from src.map.map_loader import map_import_and_save, list_update_maps, map_load
 from src.sprites import tile_sprites, player_sprite, get_sprite, FLOOR
 from src.settings.map_setup import MAPS, GENERATED, GENERATOR_PARAMS, load_map
 from src.settings.solver_setup import SOLVER_NAMES, get_solver
@@ -163,9 +166,10 @@ def menu_screen(
         if previews:
             draw_box(preview_area)
             pm = previews[selected]
-            if pm is None:
+            # [IA] Claude Code (Claude Sonnet 5.5) – prévia aceita texto (mensagem) além de mapa, usada no botão de importar
+            if pm is None or isinstance(pm, str):
                 draw_centered(
-                    hint_font, "Sem pré-visualização (mapa aleatório)", COLOR_HINT,
+                    hint_font, pm or "Sem pré-visualização (mapa aleatório)", COLOR_HINT,
                     preview_area.centery, preview_area.centerx,
                 )
             else:
@@ -182,6 +186,50 @@ def menu_screen(
             "Setas ou mouse para navegar  •  Enter/clique para escolher  •  ESC para voltar",
             COLOR_HINT,
             HEIGHT - 30,
+        )
+        pygame.display.flip()
+        clock.tick(30)
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – tela de aviso (borda vermelha, mensagem com quebra de linha) usada quando o mapa não pode ser importado
+def warning_screen(title: str, message: str):
+    """Mostra um aviso e espera Enter, ESC ou clique para voltar."""
+    box = pygame.Rect(0, 0, min(WIDTH - 80, 1000), HEIGHT // 2)
+    box.center = (WIDTH // 2, HEIGHT // 2)
+
+    def wrap(text: str) -> list[str]:
+        lines, line = [], ""
+        for word in text.split():
+            trial = f"{line} {word}".strip()
+            if line and hint_font.size(trial)[0] > box.width - 60:
+                lines.append(line)
+                line = word
+            else:
+                line = trial
+        return lines + ([line] if line else [])
+
+    lines = wrap(message)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key in (
+                pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE
+            ):
+                return
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                return
+
+        screen.fill(COLOR_BACKGROUND)
+        draw_box(box, border=(231, 76, 60))
+        draw_centered(item_font, "AVISO", (231, 76, 60), box.top + 50, box.centerx)
+        draw_centered(item_font, title, COLOR_MENU_TEXT, box.top + 110, box.centerx)
+        for i, line in enumerate(lines[:8]):
+            draw_centered(hint_font, line, COLOR_HINT, box.top + 175 + i * 34, box.centerx)
+        draw_centered(
+            hint_font, "Enter, ESC ou clique para voltar", COLOR_ACCENT,
+            box.bottom - 30, box.centerx,
         )
         pygame.display.flip()
         clock.tick(30)
@@ -1294,11 +1342,21 @@ def run_simulation(map: Map, plays: list[Playback], map_label: str):
 
 # [IA] Claude Code (Claude Sonnet 5.5) – fluxo de telas da UI (mapa, parâmetros, algoritmo, comparação); a geração com carregamento em thread não é da IA
 def main():
-    map_choices = [GENERATED] + list(MAPS)
-    map_labels = ["Mapa gerado aleatório"] + [
-        name.removesuffix(".txt") for name in MAPS.values()
+    # Cada mapa da lista: (rótulo, escolha, prévia). A escolha é GENERATED, IMPORT,
+    # o número de um mapa de maps/ ou um Map já importado de arquivo.
+    # [IA] Claude Code (Claude Sonnet 5.5) – lista de mapas com botão "Importar mapa (.md)" e mapas importados (maps/update/)
+    IMPORT = "import"
+    base_maps = [
+        (name.removesuffix(".txt"), c, load_map(c)) for c, name in MAPS.items()
     ]
-    map_previews = [None] + [load_map(c) for c in map_choices[1:]]
+    # mapas importados: os já salvos em maps/update/ + os importados nesta sessão
+    imported_maps: list[tuple[str, Map, Map]] = []
+    for saved in list_update_maps():
+        try:
+            m_ = map_load(saved)
+        except Exception:
+            continue  # arquivo inválido em update/ não derruba o app
+        imported_maps.append((Path(saved).stem, m_, m_))
     solver_choices = list(SOLVER_NAMES)
     solver_labels = [SOLVER_NAMES[c] for c in solver_choices]
     compare_label = "Comparar Algoritmos"
@@ -1310,20 +1368,52 @@ def main():
     compare_labels = [solver_labels[i] for i in compare_order]
 
     while True:
-        m = menu_screen("Escolha o mapa", map_labels, previews=map_previews)
+        entries = (
+            [("Gerar mapa", GENERATED, None),
+             ("Importar mapa", IMPORT, "Abre o explorador de arquivos")]
+            + base_maps
+            + imported_maps
+        )
+        map_labels = [label for label, _, _ in entries]
+        m = menu_screen(
+            "Escolha o mapa", map_labels, previews=[prev for _, _, prev in entries]
+        )
         if m is None:
             break
+        choice = entries[m][1]
+
+        # [IA] Claude Code (Claude Sonnet 5.5) – fluxo do botão de importar: explorador de arquivos, validação e salvamento em maps/update/
+        if choice == IMPORT:
+            try:
+                path = pick_map_file()
+            except FilePickerError as e:
+                warning_screen("Não foi possível importar o mapa", str(e))
+                continue
+            if path is None:
+                continue
+            try:
+                imported, saved = map_import_and_save(path)
+            except Exception as e:
+                warning_screen(
+                    "Não foi possível importar o mapa", f"Arquivo: {path.name}. {e}"
+                )
+                continue
+            imported_maps.append((Path(saved).stem, imported, imported))
+            continue
+
         params = None
-        if map_choices[m] == GENERATED:
+        if choice == GENERATED:
             params = config_screen()
             if params is None:
                 continue
         try:
-            map = (
-                generate_map_with_loading(params)
-                if map_choices[m] == GENERATED
-                else load_map(map_choices[m], params)
-            )
+            if choice == GENERATED:
+                map = generate_map_with_loading(params)
+            # [IA] Claude Code (Claude Sonnet 5.5) – mapa importado já carregado
+            elif isinstance(choice, Map):
+                map = choice
+            else:
+                map = load_map(choice, params)
         except Exception as e:
             menu_screen("Erro ao gerar o mapa", ["Voltar"], subtitle=str(e)[:110])
             continue
