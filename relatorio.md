@@ -1,13 +1,18 @@
 # Relatório — Parte 1: Labirinto com Chaves (Grafo de Estados)
 
-Teoria dos Grafos + AVD — 2026.2
+Teoria dos Grafos — 2026.2
 
-> Esqueleto de tópicos. Cada seção traz o que deve ser coberto e um espaço `[PREENCHER]`.
-> O texto, as análises e as conclusões devem ser escritos pelo grupo.
+**Integrantes:**
 
-**Integrantes:** [PREENCHER]
+- Amanda Luz
+- Eric Albuquerque
+- Mircio Ferreira
+- Gabriel Aniceto
+- Caio Almeida
 
-**Orientador(a):** [PREENCHER]
+**Orientadora:**
+
+- Laura Alvez
 
 ---
 
@@ -15,20 +20,32 @@ Teoria dos Grafos + AVD — 2026.2
 
 <!-- Problema, objetivo e visão geral do projeto. -->
 
-- Descrição do problema (S, G, chaves, portas, terrenos): [PREENCHER]
-- Mapas utilizados (m01 a m08 e mapas do grupo): [PREENCHER]
-- Tabela de custos por terreno: [PREENCHER]
+- Descrição do problema: O jogador começa na casa `S` de um labirinto e precisa chegar à saída `G` pelo caminho de menor custo. O mapa tem paredes, que não podem ser atravessadas, e terrenos com custos diferentes. Há chaves, que o jogador pega ao entrar na casa e guarda para sempre, e portas, que só podem ser atravessadas por quem já tem a chave correspondente. Há também esteiras de mão única e casas de bônus. Como a mesma casa pode ser visitada com conjuntos de chaves diferentes, o mapa não pode ser tratado como o grafo: o problema é modelado como um grafo de estados, em que cada estado combina a posição, as chaves coletadas e os bônus já consumidos.
+- Mapas utilizados: Os mapas `m01` a `m08` foram fornecidos pela orientadora como um desafio a ser debatido pelo grupo. Cada um exercita uma situação diferente: custos de terreno, uma ou três chaves, esteiras, bônus, fonte de energia, um mapa sem solução e um mapa grande. Além deles, o grupo criou mapas próprios a partir de um gerador de mapas. `m09` a `m11`
+- Tabela de custos por terreno: A orientadora também indicou a tabela de custos abaixo, que não foi escolhida pelo grupo. O custo de um movimento é o custo da casa de destino.
+
+| Símbolo | Terreno | Custo de entrar |
+|---|---|---|
+| `.` | Chão | 1 |
+| `S` / `G` | Início / saída | 1 |
+| `,` | Lama | 3 |
+| `~` | Água | 5 |
+| `a`–`d` | Chave | 1 |
+| `A`–`D` | Porta (exige a chave correspondente) | 1 |
+| `>` `<` `^` `v` | Esteira (só sai na direção da seta) | 1 |
+| `+` | Bônus | −4 na primeira vez, 1 nas seguintes |
+| `*` | Fonte de energia | −2 toda vez |
+| `#` | Parede | intransponível |
 
 ## 2. Modelagem
 
 <!-- O mapa não é o grafo. -->
 
-- G_pos (grafo de posições): [PREENCHER]
-- G_est (grafo de estados): [PREENCHER]
-- Rótulo do estado `(linha,coluna)|chaves|{bônus}`: [PREENCHER]
-- Nó virtual ALVO: [PREENCHER]
-- Por que o grafo é dirigido (esteiras, coleta de chave): [PREENCHER]
-- Ordem dos vizinhos (N, L, S, O): [PREENCHER]
+- G_pos (grafo de posições): Matriz em que células adjacentes (N, L, S, O) são consideradas navegaveis caso cumpram as regras de navegação (ter a chave, não ser parede...)
+- G_est (grafo de estados): É gerado dinamicamente durante a execução dos algoritmos de busca ao iterar pelo grafo de posições, também é gerado uma árvore de caminho reverso para cada mapa a fim de se encontrar o caminho mínimo.
+- Rótulo do estado `(linha,coluna)|{chaves}|{bônus}`: Uma representação de uma célula durante a busca pelo menor caminho sobre as restrições e regras impostas pelo problema.
+- Nó virtual ALVO: Posição final em que o algoritmo deve encontrar o caminho até ele.
+- Por que o grafo é dirigido (esteiras, coleta de chave): Após o algoritmo passar por determinadas células ela apenas pode navegar em uma direção sem poder voltar no estado anterior, a mais clara é no chão direcionado mas o mesmo também ocorre quando é pego uma chave ou numa célula bonûs (+)
 
 ## 3. Estruturas de dados
 
@@ -36,12 +53,15 @@ Teoria dos Grafos + AVD — 2026.2
 
 | Estrutura | Onde é usada | Por que foi escolhida | Custo |
 |---|---|---|---|
-| Tabela hash (`dict`) | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| Conjunto (`set`) | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| Outras (pilha, fila, heap) | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| Tabela hash (`dict`) | (Árvores de caminho reverso, menor custo encontrado, outros subproblemas envolvendo chave valor) por estados | Menor complexidade de inserção e busca  | Busca, escrita, O(1), Iterar O(n) |
+| Conjunto (`set`) | Estados visitados | Menor complexidade de inserção e busca | Busca, escrita, O(1), Iterar O(n) |
+| Pilha (`list`) | dfs, backtraking | base do algoritmo de dfs | Push O(1), Pop O(1) |
+| Fila (`deque`) | Bfs, Mapa de distância | base do algoritmo de bfs | Enqueue O(1) Dequeue O(1) |
+| Fila de prioridade (`heapq`) | Dijstra, A*, Prim | Uso de fila de prioridade | Enqueue O(log(n)) Dequeue O(log(n)) |
+| Disjoint Set (`DisjointSet`) | Kruskal | União de conjuntos + consulta | Complexidade O(1) |
 
-- Representação do estado (`MapState`): [PREENCHER]
-- Representação do grafo (lista de adjacência): [PREENCHER]
+- Representação do estado (`MapState`): ((x, y), {keys}, {bonus_visited})
+- Representação do grafo (lista de adjacência): list[MapState]
 - Exploração a partir do estado inicial, sem gerar todas as combinações: [PREENCHER]
 
 ## 4. Gerador de mapas
