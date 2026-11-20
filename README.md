@@ -89,6 +89,7 @@ Algoritmos disponíveis na UI: A\*, BFS, DFS, Dijkstra, Bellman-Ford, BFS Wall
 python -m pytest                                  # todos os testes
 python -m pytest test/test_algorithms/test_bfs.py # um arquivo específico
 python -m pytest test/test_algorithms/test_dfs.py # testes do DFS
+python -m pytest test/test_algorithms/test_dijkstra.py # testes do Dijkstra
 ```
 
 ## Formato dos mapas
