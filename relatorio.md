@@ -182,26 +182,55 @@ O mapa 07 não tem solução porque a chave (`a`) que destrava a porta (`A`) est
 
 <!-- Código: src/metrics/graph_metrics.py e src/metrics/state_degrees.py -->
 
-- Definições: ordem, tamanho, densidade, teto teórico e taxa de ocupação: [PREENCHER]
-- Graus de entrada e de saída: [PREENCHER]
+As métricas são calculadas para os dois grafos de cada mapa: o grafo de posições (G_pos) e o grafo de estados (G_est). Ambos são dirigidos. V é o conjunto de vértices e E é o conjunto de arcos.
+
+| Métrica | Definição | Como é calculada |
+|---|---|---|
+| Ordem | Número de vértices do grafo, \|V\|. No G_pos são as casas alcançáveis a partir de `S`. No G_est são os estados alcançáveis. | Tamanho do dicionário de adjacência (`len(adj)`), construído por exploração a partir do início. Só entram vértices alcançáveis. |
+| Tamanho | Número de arcos do grafo, \|E\|. Cada movimento permitido de um vértice para outro é um arco, sem espelhamento. | Soma dos tamanhos das listas de vizinhos de todos os vértices. |
+| Densidade | Fração dos arcos possíveis que existem de fato. Num grafo dirigido, o máximo é \|V\|(\|V\| − 1). | `\|E\| / (\|V\| · (\|V\| − 1))`. Se \|V\| < 2, vale 0. |
+| Teto teórico | Máximo de vértices que o grafo poderia ter se todas as combinações fossem possíveis. No G_pos é o número de casas livres. No G_est é casas livres × 2^(nº de chaves) × 2^(nº de bônus). | Conta as casas que não são parede, as chaves e os bônus do mapa, e aplica a fórmula. |
+| Taxa de ocupação | Fração do teto teórico que é realmente alcançável. | `\|V\| / teto`. |
+| Grau de entrada | Número de arcos que chegam a um vértice. | Para cada arco `u → v`, soma 1 ao grau de entrada de `v`. |
+| Grau de saída | Número de arcos que saem de um vértice. | Tamanho da lista de vizinhos do vértice. |
+
+O cálculo está em `src/metrics/graph_metrics.py` (ordem, tamanho, densidade, teto e ocupação) e em `src/metrics/state_degrees.py` (graus). Em um grafo dirigido, a soma dos graus de entrada é igual à soma dos graus de saída e igual ao tamanho, o que o código confere com um `assert`.
 
 ### 6.1 Resultados por mapa
 
 | Mapa | Ordem G_pos | Tamanho G_pos | Densidade G_pos | Ordem G_est | Tamanho G_est | Densidade G_est | Teto | Ocupação |
 |---|---|---|---|---|---|---|---|---|
-| m01 | [PREENCHER] | | | | | | | |
-| m02 | [PREENCHER] | | | | | | | |
-| ... | | | | | | | | |
+| m01_terreno | 24 | 48 | 0.0870 | 24 | 48 | 0.0870 | 24 | 100.0% |
+| m02_uma_chave | 23 | 44 | 0.0870 | 39 | 75 | 0.0506 | 46 | 84.8% |
+| m03_tres_chaves | 76 | 168 | 0.0295 | 213 | 467 | 0.0103 | 608 | 35.0% |
+| m04_esteiras | 20 | 36 | 0.0947 | 37 | 67 | 0.0503 | 48 | 77.1% |
+| m05_bonus | 44 | 92 | 0.0486 | 340 | 712 | 0.0062 | 352 | 96.6% |
+| m06_fonte | 24 | 48 | 0.0870 | 24 | 48 | 0.0870 | 24 | 100.0% |
+| m07_impossivel | 25 | 56 | 0.0933 | 16 | 38 | 0.1583 | 62 | 25.8% |
+| m08_grande | 1169 | 2576 | 0.0019 | 2919 | 6366 | 0.0007 | 18704 | 15.6% |
+| m09_gerado_01 | 66 | 123 | 0.0287 | 259 | 471 | 0.0070 | 8832 | 2.9% |
+| m10_gerado_02 | 51 | 94 | 0.0369 | 184 | 337 | 0.0100 | 4416 | 4.2% |
+| m11_gerado_extra | 66 | 118 | 0.0275 | 96 | 173 | 0.0190 | 2240 | 4.3% |
 
-### 6.2 Camadas e arcos entre camadas
+O teto e a ocupação são os do grafo de estados: teto = casas livres × 2^(nº de chaves) × 2^(nº de bônus), e ocupação = ordem do G_est ÷ teto. Os valores vêm do arquivo [`out/parte1/metricas_grafos.txt`](out/parte1/metricas_grafos.txt), gerado por `python -m src.metrics.graph_metrics`.
 
-- Subgrafos por conjunto de chaves: [PREENCHER]
-- Arcos entre camadas e as casas que os geram: [PREENCHER]
 
-### 6.3 Graus e multiplicidade
+### 6.2 Graus e multiplicidade
 
-- Estado com maior grau de saída e de entrada: [PREENCHER]
-- Multiplicidade máxima de uma casa (m08): [PREENCHER]
+- Graus de entrada e de saída: O grau de saída de um estado é o número de arcos que saem dele, isto é, para quantos estados o jogador pode ir a partir dele. O grau de entrada é o número de arcos que chegam a ele. Os graus são calculados por `degrees()` e gravados por `state_degrees_csv()`, ambos em [`src/metrics/state_degrees.py`](src/metrics/state_degrees.py). O grafo de estados vem de `state_graph()`, que explora a partir do estado inicial. O grau de saída é o tamanho da lista de vizinhos de cada estado, e o grau de entrada é obtido percorrendo todos os arcos `u → v` e somando 1 ao grau de `v`. Para cada mapa, o resultado é gravado em `out/parte1/graus/graus_<mapa>.csv`, com uma linha por estado.
+
+  Exemplo, as primeiras linhas de [`graus_m02_uma_chave.csv`](out/parte1/graus/graus_m02_uma_chave.csv). A posição está no formato `x,y`, e `-` indica que o campo está vazio (sem chaves ou sem bônus).
+
+  | Posição (x,y) | Chaves | Bônus visitados | Grau de entrada | Grau de saída |
+  |:---:|:---:|:---:|:---:|:---:|
+  | 1,1 | - | - | 2 | 2 |
+  | 1,1 | a | - | 2 | 2 |
+  | 1,2 | - | - | 2 | 2 |
+  | 1,2 | a | - | 2 | 2 |
+  | 1,3 | - | - | 2 | 2 |
+
+  A mesma posição aparece em duas linhas, uma sem chaves e outra com a chave `a`, porque são estados diferentes do grafo.
+
 
 ## 7. Testes
 
@@ -218,6 +247,7 @@ python3 -m pytest test/map_loader test/test_algorithms -v
 | map_loader (leitura) | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 | map_loader (ida e volta) | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 | BFS | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| DFS | (1) mapa simples com um único caminho; (2) objetivo inalcançável; (3) porta trancada com a chave em outro ponto do mapa; (4) árvore de predecessores da busca | (1) caminho válido de `S` até `G`, com cada passo permitido; (2) caminho vazio; (3) a mesma casa aparece em dois estados, sem a chave e com ela; (4) o início não tem predecessor, nenhum estado é expandido duas vezes, e cada predecessor leva ao estado por um arco permitido | 4 testes passaram (`test/test_algorithms/test_dfs.py`) |
 | Dijkstra | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 | Bellman-Ford | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 
