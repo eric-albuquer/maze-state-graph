@@ -90,6 +90,7 @@ python -m pytest                                  # todos os testes
 python -m pytest test/test_algorithms/test_bfs.py # um arquivo específico
 python -m pytest test/test_algorithms/test_dfs.py # testes do DFS
 python -m pytest test/test_algorithms/test_dijkstra.py # testes do Dijkstra
+python -m pytest test/test_algorithms/test_bellman_ford.py # testes do Bellman-Ford
 ```
 
 ## Formato dos mapas
