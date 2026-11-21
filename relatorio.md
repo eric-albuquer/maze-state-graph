@@ -255,68 +255,97 @@ python3 -m pytest test/map_loader test/test_algorithms -v
 
 ## 8. Visualizações
 
-> Para cada figura: o que mostra, qual insight, por que esse tipo de gráfico.
-> Título, legenda e rótulos de eixo são obrigatórios.
-
 ### 8.1 Algoritmos escolhidos
 
-- Algoritmos exibidos (até 4) e motivo da escolha: [PREENCHER]
+- Na interface gráfica é possível escolher 4 algoritmos e compará-los ao mesmo tempo, em quadrantes, assistindo à solução de cada um no mesmo mapa. Os 4 algoritmos obrigatórios do enunciado são BFS, DFS, Dijkstra e Bellman-Ford. Além deles, o grupo implementou, de forma extra e como uma brincadeira, outros algoritmos que também aparecem no menu: A*, BFS Wall, A* Hack, Random Walk e Portal Solver.
+
+![Menu de escolha de algoritmos da interface](docs/imagens_relatorio/comparacao_4_algoritmos_m03.png)
 
 ### 8.2 Heatmap das camadas
 
-![Heatmap das camadas](out/parte1/figuras/heatmap_camadas.png)
+![Cor por camada na simulação](docs/imagens_relatorio/camadas_m03.png)
 
-- O que mostra: [PREENCHER]
-- Insight: [PREENCHER]
-- Por que este gráfico: [PREENCHER]
+*Figura: mapa `m03` com a opção de cor por camada (`L`) ligada. Cada cor é um conjunto de chaves (sem chaves, `a`, `ab`, `abc`), nos quatro algoritmos.*
+
+- O que mostra: O mapa com cada algoritmo em um quadrante, colorido pelas chaves que o jogador tinha em cada parte do caminho. Cada cor é um conjunto de chaves.
+- Insight: A cor muda sempre que o jogador pega uma chave ou passa em um bonus. 
+Os algoritimos diferem no caminho entre as chaves: o BFS e o Dijkstra chegam a elas por rotas mais curtas ou mais baratas, e o DFS dá mais voltas. O Bellman-Ford faz o mesmo caminho do Dijkstra, mas explora muito mais.
 
 ### 8.3 Heatmap de acessos por casa (G_pos)
 
-![Heatmap de acessos por casa](out/parte1/figuras/heatmap_acessos.png)
+![Quantidade de acessos por casa](docs/imagens_relatorio/acessos_por_casa_m03.png)
 
-- O que mostra: [PREENCHER]
-- Insight: [PREENCHER]
-- Por que este gráfico: [PREENCHER]
+*Figura: mapa `m03` ao fim da simulação, nos quatro algoritmos. O número pequeno no canto inferior esquerdo da casa (`2x`, `3x`...) é quantas vezes o algoritmo explorou a casa. O número branco no canto superior direito é quantas vezes o caminho final passou por ela.*
+
+- O que mostra: Quantas vezes cada casa do mapa foi acessada, tanto na exploração do algoritmo quanto no caminho final. Quanto mais forte a cor, mais acessos.
+- Insight: Muitas casas do caminho final são percorridas mais de uma vez, porque o jogador volta por elas já com outras chaves, o que são estados diferentes no grafo. Entre os algoritmos, o Bellman-Ford é o que mais repete visitas na exploração, e o DFS é o que deixa mais casas sem explorar.
+
 
 ### 8.4 Árvore BFS dos estados
 
-![Árvore BFS dos estados](out/parte1/figuras/arvore_bfs.png)
+![Árvore BFS dos estados](docs/imagens_relatorio/arvore_bfs_m08.png)
 
-- O que mostra: [PREENCHER]
-- Insight: [PREENCHER]
-- Por que este gráfico: [PREENCHER]
+*Figura: árvore de busca do BFS no mapa `m08`. O caminho final está em branco, e as cores indicam o conjunto de chaves.*
+
+- O que mostra: A árvore de busca do BFS no mapa grande. Cada ponto é um estado, e o caminho final está destacado em branco. As cores indicam as chaves coletadas.
+- Insight: O caminho final passa pelas camadas de chaves em ordem, e a maior parte dos estados explorados fica fora dele, em ramos que a busca descartou.
+
 
 ### 8.5 Métricas resumo
 
-![Métricas resumo](out/parte1/figuras/metricas_resumo.png)
+![Tabela comparativa dos algoritmos](docs/imagens_relatorio/tabela_comparativa_m03.png)
 
-| Algoritmo | Estados expandidos | Passos | Custo | Tempo |
-|---|---|---|---|---|
-| [PREENCHER] | | | | |
+*Figura: tabela comparativa da interface (tecla `T`) no mapa `m03`, com iterações, passos e custo total de cada algoritmo.*
 
-- Interpretação: [PREENCHER]
+| Algoritmo | Estados expandidos | Passos | Custo |
+|---|---|---|---|
+| Dijkstra | 187 | 92 | 100 |
+| Bellman-Ford | 394 | 92 | 100 |
+| BFS | 179 | 88 | 120 |
+| DFS | 184 | 104 | 142 |
 
-## 9. Conclusão e limitações
+- Interpretação: O Dijkstra e o Bellman-Ford encontram o menor custo, mas o Bellman-Ford precisa de bem mais trabalho para chegar ao mesmo resultado. O BFS usa menos passos, mas o custo é maior, porque não considera o custo das casas. O DFS é o pior nos dois critérios, pois devolve o primeiro caminho que encontra.
 
-- Conclusões: [PREENCHER]
-- Limitações: [PREENCHER]
-- Possíveis melhorias: [PREENCHER]
+## 9. Apêndices
 
-## 10. Apêndices
+### 9.1 Gabarito dos mapas do grupo
 
-### 10.1 Gabarito dos mapas do grupo
+Os gabaritos ficam em [`out/parte1/gabarito_mapa_gerado/`](out/parte1/gabarito_mapa_gerado/), com uma pasta para cada algoritmo ([`astar`](out/parte1/gabarito_mapa_gerado/astar/), [`bfs`](out/parte1/gabarito_mapa_gerado/bfs/), [`dfs`](out/parte1/gabarito_mapa_gerado/dfs/), [`dijkstra`](out/parte1/gabarito_mapa_gerado/dijkstra/) e [`bellman_ford`](out/parte1/gabarito_mapa_gerado/bellman_ford/)) e um arquivo `gabarito_<mapa>.txt` por mapa. Eles são gerados por `python -m src.metrics.map_solution`.
 
-| Mapa | Nº de estados | Nº de arcos | Passos (BFS) | Custo (Dijkstra ou Bellman-Ford) |
-|---|---|---|---|---|
-| [PREENCHER] | | | | |
+Exemplo: o mapa [`m09_gerado_01.txt`](maps/m09_gerado_01.txt) e o início do seu gabarito pelo Dijkstra, [`gabarito_m09_gerado_01.txt`](out/parte1/gabarito_mapa_gerado/dijkstra/gabarito_m09_gerado_01.txt). O arquivo lista as posições do caminho, no formato (linha, coluna), de `S` até `G`.
 
-### 10.2 Matriz de contribuição
+```
+###########
+#S+..a..c.#
+#v#######A#
+#+#>B..b..#
+#.#######^#
+#.>>...v#,#
+#~#####.#.#
+#,..#.+,#.#
+#.###~#####
+#.#G#...>.#
+###+#####C#
+#...#v....#
+#~###.###.#
+#.....#,.<#
+###########
+```
 
-| Integrante | Pacotes de trabalho | Dono / revisor |
-|---|---|---|
-| [PREENCHER] | | |
+```
+Mapa: m09_gerado_01
+Algoritmo: Dijkstra
+pos   /   linha    / coluna
 
-### 10.3 Uso de IA
+  0: (1, 1)
+  1: (1, 2)
+  2: (1, 3)
+  3: (1, 4)
+  4: (1, 5)
+  ...
+```
 
-- Trechos feitos com apoio de IA e finalidade: [PREENCHER]
-- Declaração de Uso de IA assinada (`docs/`): [PREENCHER]
+
+### 9.2 Uso de IA
+
+O uso de IA generativa no projeto está declarado no documento de declaração de uso de IA, que pode ser visto no link externo: [Documento de declaração de uso de IA](https://docs.google.com/document/d/1a_AzeSNbBuQOpufTuFRQ0rQSwkhV5YSE/edit?usp=sharing&ouid=115450337528857953689&rtpof=true&sd=true). Esse é o mesmo link que está no `README.md`.
