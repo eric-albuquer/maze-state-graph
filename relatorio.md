@@ -143,15 +143,40 @@ V e E são o número de estados e de arestas do grafo de estados (G_est) alcanç
 
 ### 5.1 Discussões obrigatórias
 
-- m01 — por que BFS e Dijkstra dão caminhos diferentes: [PREENCHER]
-- m05 — por que o G_est não tem ciclo negativo (prova): [PREENCHER]
-- m06 — ciclo negativo e correção da regra da fonte: [PREENCHER]
-- m07 — por que não há solução e quantos estados são alcançáveis: [PREENCHER]
+- m01 — por que BFS e Dijkstra dão caminhos diferentes: 
+
+O BFS busca o caminho mais curto em distância, isto é, com o menor número de passos, e não considera o custo de cada casa. O Dijkstra busca o caminho de menor custo, somando o custo de cada casa de destino. No `m01` existem dois caminhos possíveis de `S` até `G`, e eles passam por terrenos diferentes. O caminho de cima atravessa 5 casas de água (custo 5 cada) e o de baixo atravessa 3 casas de lama (custo 3 cada). O caminho de cima é o menor do ponto de vista da distância (10 passos), mas é o maior em custo (30). O caminho de baixo é o maior do ponto de vista da distância (14 passos), mas é o menor em custo (20). Por isso o BFS escolhe o caminho de cima, e o Dijkstra escolhe o de baixo, e os caminhos gerados são diferentes.
+
+
+- m05 — por que o G_est não tem ciclo negativo: 
+
+O mapa 05 não tem ciclo negativo porque não existe custo negativo permanente, apenas o do bônus. Na primeira vez que o jogador entra no bônus, o custo é negativo, mas depois disso o custo passa a ser positivo. Depois que um estado gera o bônus, ele é dado como visitado e não pode mais gerar um ciclo negativo. O ciclo negativo só seria possível se o custo negativo fosse permanente, como o da fonte de energia (`*`), que vale −2 toda vez que o jogador entra nela.
+
+
+- m06 — ciclo negativo e correção da regra da fonte: 
+
+O mapa 06 tem ciclo negativo por causa da fonte de energia (`*`), cujo custo é −2 de forma permanente, toda vez que o jogador entra nela. A fonte está na linha 3, coluna 5, e a casa anterior a ela é a da linha 3, coluna 4 (custo 1). O jogador pode sair da casa anterior para a fonte e voltar, e cada ida e volta custa −2 + 1 = −1. Como isso pode se repetir indefinidamente, o custo sempre diminui, e algoritmos como o Dijkstra entram num ciclo infinito, indo e voltando entre as duas casas. Para detectar, há abordagens simples, e uma delas é verificar se o número de arestas de um caminho excede o teto teórico, que é casas livres × 2^(nº de chaves) × 2^(nº de bônus). Se exceder, houve um problema de ciclo, pois um caminho sem ciclo nunca teria mais arestas do que o número de estados. Para corrigir a regra é possivel alterar a regra para que funciona de forma similar ao do bonus onde só a primeira visita é negativa, outra forma é somar todos +2 para todos as demais posições.
+
+- m07 — por que não há solução e quantos estados são alcançáveis: 
+
+O mapa 07 não tem solução porque a chave (`a`) que destrava a porta (`A`) está atrás dela, e por isso é impossível ultrapassá-la. A ausência de solução é detectada pela busca: quando não resta mais nenhum estado para explorar e a saída (`G`) não foi alcançada, conclui-se que não é possível chegar nela. O mapa não tem nenhum terreno especial que possa gerar estados diferentes para a mesma casa, como bônus ou chaves alcançáveis na prática. Por isso as posições alcançáveis têm sempre o mesmo conjunto de chaves e de bônus (vazio), e o grafo de estados alcançável se comporta como o grafo de posições. São 16 posições alcançáveis dentro de um estado.
 
 ### 5.2 Estados-armadilha
 
-- Definição e como são calculados: [PREENCHER]
-- Resultados (m04, m07): [PREENCHER]
+- Definição e como são calculados: Estado-armadilha é um estado alcançável a partir de `S` do qual a saída (`G`) não pode mais ser alcançada. Existem duas formas de ele surgir:
+  1. Por esteira. A esteira obriga o jogador a sair na direção da seta, e só permite entrar por qualquer lado. Se a seta aponta para uma parede ou para um trecho sem saída, o jogador não consegue voltar, porque o único movimento permitido é o da seta. Exemplos simples, em que `J` é o jogador:
+
+     ```
+     J . . . > . #       depois da esteira o jogador só anda para a direita e nunca mais volta
+     # < J . . . G #     se o jogador entrar na esteira, ela aponta para a parede e ele fica preso
+     ```
+
+  2. Por chave atrás da própria porta, como no `m07`: a chave que abre a porta está depois dela, então a porta nunca é aberta e tudo o que está depois dela é inalcançável.
+
+  A detecção segue a mesma ideia nos dois casos: o estado entra numa região da qual não há como sair em direção à saída e não é possível retornar. Para calcular, explora-se o grafo de estados a partir de `S` e marcam-se os estados que não conseguem chegar à saída. Isso pode ser feito buscando a partir da saída no grafo com os arcos invertidos (grafo transposto): os estados alcançáveis a partir de `S` que não aparecem nessa busca são os estados-armadilha.
+
+  Para ser armadilha, importa o estado inteiro (posição e chaves), e não só a posição. No `m04` há dois casos. O primeiro é quando o jogador entra na primeira esteira para cima (`^`): ela aponta para a parede, então ele não tem para onde ir e não pode voltar. O segundo é quando o jogador entra na esteira `>` perto da porta sem a chave: a esteira o empurra para a direita, e a porta `A` fica bloqueada, então ele fica indo e voltando entre as mesmas casas. Na mesma esteira `>`, com a chave, o jogador consegue abrir a porta e chegar à saída, então esse estado deixa de ser armadilha.
+- Resultados (m04, m07): No `m07` não há solução, porque todo estado alcançável é armadilha. São 16 posições alcançáveis dentro de um estado, todas sem chaves, e nenhuma delas chega à saída. Como só existem essas posições, não há outro caminho a explorar. No `m04` há 37 estados alcançáveis e 4 são armadilha (10,8%). Um deles é a esteira `^` da linha 1, coluna 3, que aponta para a parede (aparece em dois estados, com e sem a chave `a`). Os outros dois estão na linha 1, colunas 8 e 9: são a última esteira `>` e a casa ao lado da porta `A`, e são armadilha apenas quando o jogador não tem a chave. Mesmo que alguns estados morram, existem outros estados no mapa, e é possível navegar por eles até a saída, por isso o `m04` tem solução.
 
 ## 6. Métricas
 
