@@ -83,6 +83,49 @@ python -m src.metrics.map_solution  # gera os gabaritos em out/parte1/gabarito_m
 Algoritmos disponíveis na UI: A\*, BFS, DFS, Dijkstra, Bellman-Ford, BFS Wall
 (caminhada pelas paredes), A\* Hack, Random Walk e Portal Solver.
 
+## Interface gráfica
+
+Abra com `python -m src.ui`. O fluxo é: escolher o mapa → escolher o algoritmo → assistir à simulação.
+
+### Navegação nos menus
+
+| Comando | O que faz |
+|---|---|
+| `↑` / `↓` ou mouse | mover entre as opções |
+| `Enter` ou clique | escolher a opção |
+| `ESC` | voltar à tela anterior |
+
+- **Escolha o mapa:** lista os mapas de `maps/`, mais "Gerar mapa" e "Importar mapa". Importar abre o explorador de arquivos, valida um `.md` ou `.txt` e salva em `maps/update/`.
+- **Gerar mapa:** abre a tela de parâmetros. `↑` / `↓` escolhe o campo, `←` / `→` (ou clicar nas metades) altera o valor, e depois se escolhe "Gerar mapa" ou "Restaurar padrão". `ESC` cancela a geração em andamento.
+- **Escolha o algoritmo:** um algoritmo roda sozinho com o painel de informações ao lado. "Comparar Algoritmos" mostra 4 ao mesmo tempo, em quadrantes.
+- **Comparar Algoritmos:** `↑` / `↓` move o cursor, `Espaço` ou clique marca e desmarca (exatamente 4), e `Enter` inicia.
+
+### Comandos durante a simulação
+
+| Tecla | O que faz |
+|---|---|
+| `Espaço` | pausa e retoma |
+| `↑` / `+` | dobra a velocidade |
+| `↓` / `-` | divide a velocidade pela metade |
+| `R` | reinicia a simulação |
+| `L` | liga e desliga a cor por camada (conjunto de chaves) |
+| `B` | abre a árvore de busca (quando algum algoritmo da tela tem árvore) |
+| `T` | abre e fecha a tabela comparativa (modo de 4 algoritmos, quando todos terminaram) |
+| `O` | na tabela, alterna a ordenação (custo → iterações → passos) |
+| `Enter` ou clique | fecha o aviso de resultado de cada algoritmo |
+| `ESC` | volta ao menu (se a tabela estiver aberta, fecha a tabela) |
+
+### Árvore de busca
+
+| Comando | O que faz |
+|---|---|
+| arrastar com o mouse | move a árvore |
+| roda do mouse | zoom, em torno do cursor |
+| `R` ou `F` | reenquadra a árvore na tela |
+| `ESC` | volta à simulação |
+
+O caminho final aparece em branco na árvore.
+
 ## Testes
 
 ```bash
