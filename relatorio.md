@@ -68,31 +68,78 @@ Teoria dos Grafos — 2026.2
 
 <!-- Código: src/map/map_generator.py e src/gerar_mapa.py -->
 
-- Etapas da geração: [PREENCHER]
-- Estratégias do labirinto (backtracking, divisão recursiva, Kruskal, Prim): [PREENCHER]
-- Distribuição de chaves e portas: [PREENCHER]
-- Esteiras, água, lama, bônus e fonte: [PREENCHER]
-- Parâmetros (`GENERATOR_PARAMS`): [PREENCHER]
-- Como o mapa é salvo (`map_save`) e recarregado (`map_load`): [PREENCHER]
+- Etapas da geração (`generate_map`): o gerador monta o mapa em etapas, sempre nesta ordem:
+  1. Constrói o labirinto base com a estratégia escolhida. Altura e largura são forçadas a ímpar (`rows |= 1`, `cols |= 1`), e o resultado é uma grade de paredes e corredores, cercada por parede.
+  2. Cria ciclos (`generate_loops`): remove paredes internas com probabilidade `braid_factor`. Com 0 o labirinto fica "perfeito" (um único caminho entre duas casas); valores maiores abrem caminhos alternativos.
+  3. Sorteia a posição de `S` entre as casas de coordenadas ímpares.
+  4. Faz uma BFS a partir de `S` (`get_cells_by_distance`) e guarda as casas na ordem em que são alcançadas, da mais perto para a mais longe.
+  5. Distribui as chaves e portas (`generate_key_port`).
+  6. Escolhe a posição de `G` (`get_worst_cell`): faz uma BFS sobre pares (posição, chaves coletadas) e escolhe a casa mais distante de `S`, em número de passos, já respeitando as portas.
+  7. Distribui as esteiras (`generate_floor_direct`) e os demais terrenos (`generate_floor_variation`).
+  8. Calcula as estatísticas do mapa (`compute_stats`), como a contagem de cada tipo de casa.
+- Estratégias do labirinto (parâmetro `strategy`):
+  - `backtracking`: busca em profundidade com pilha. Parte de uma casa ímpar sorteada, anda de 2 em 2 para um vizinho ainda não visitado, abre a parede do meio e volta atrás quando não há vizinho livre.
+  - `recursive_division`: começa com uma sala aberta e a divide recursivamente por paredes, deixando uma passagem em cada parede. Escolhe a direção do corte conforme a proporção da área (vertical se for mais larga do que alta).
+  - `kruskal`: cada casa ímpar é um nó e cada parede entre duas casas vizinhas é uma aresta candidata. As arestas são embaralhadas, e a parede só é aberta se as duas casas ainda estiverem em conjuntos diferentes. A verificação usa a estrutura de conjuntos disjuntos (`DisjointSet`, com compressão de caminho e união por rank).
+  - `prim`: parte de uma casa sorteada e mantém uma lista de arestas de fronteira. Sorteia uma delas e, se a casa de destino ainda não foi visitada, abre a parede e acrescenta as novas arestas.
+- Distribuição de chaves e portas (`generate_valid_sequence`, `generate_key_port`): primeiro sorteia uma sequência em que cada porta só aparece depois da sua chave. Depois coloca os elementos da sequência em posições igualmente espaçadas ao longo da lista da BFS (passo = total de casas ÷ (tamanho da sequência + 2)). Assim as chaves ficam mais perto de `S`, as portas mais longe, e uma chave nunca fica atrás da própria porta. As letras vêm do parâmetro `keys`, e cada chave cria a porta correspondente.
+- Esteiras, água, lama, bônus e fonte:
+  - Esteiras (`floor_directed_density`): só são colocadas sobre casas de chão comum. As casas por onde passa o caminho de `S` até `G` recebem a direção desse caminho. As que ficam fora do caminho recebem uma direção sorteada entre os vizinhos que não são parede. Casas que o caminho cruza mais de uma vez não recebem esteira.
+  - Água, lama, bônus e fonte (`water_density`, `mud_density`, `bonus_density`, `source_density`): cada casa de chão comum sorteia um número entre 0 e 1 e vira um desses terrenos conforme as faixas acumuladas das densidades. A soma de todas as densidades não pode passar de 1, senão o gerador levanta `ValueError`.
+- Parâmetros (`GENERATOR_PARAMS`, em `src/gerar_mapa.py`):
+
+| Parâmetro | Significado | Exemplo de entrada |
+|---|---|---|
+| `rows`, `cols` | tamanho do mapa (linhas × colunas) | 15 × 11 |
+| `strategy` | algoritmo que gera o labirinto | `backtracking` |
+| `keys` | chaves do mapa; cada uma cria a porta correspondente | `a`, `b`, `c` |
+| `braid_factor` | fração de paredes removidas para criar ciclos (0 a 1) | 0.00 |
+| `water_density` | fração de casas de água | 0.03 |
+| `mud_density` | fração de casas de lama | 0.03 |
+| `source_density` | fração de casas de fonte | 0.0 |
+| `bonus_density` | fração de casas de bônus | 0.01 |
+| `floor_directed_density` | fração de esteiras direcionadas | 0.20 |
+
 
 ### 4.1 Mapas do grupo
 
-| Mapa | Requisito | Como foi obtido | Como foi validado |
-|---|---|---|---|
-| Mapa 1 | ≥ 3 chaves, esteiras e bônus; caminho de menor custo coleta bônus e passa por esteira | [PREENCHER] | [PREENCHER] |
-| Mapa armadilha | ≥ 20% dos estados alcançáveis são armadilha | [PREENCHER] | [PREENCHER] |
+Além dos mapas `m01` a `m08` fornecidos pela orientadora, o grupo trabalhou com três mapas extras. Eles foram gerados pelo gerador descrito acima e depois editados à mão: foram colocadas casas de bônus (`+`) e esteiras (`>`, `<`, `^`, `v`) para criar os estados-armadilha.
+
+| Mapa | Arquivo | Origem |
+|---|---|---|
+| m09 | [`m09_gerado_01.txt`](maps/m09_gerado_01.txt) | gerado por `src/gerar_mapa.py` e editado à mão (bônus e esteiras) |
+| m10 | [`m10_gerado_02.txt`](maps/m10_gerado_02.txt) | gerado por `src/gerar_mapa.py` e editado à mão (bônus e esteiras) |
+| m11 | [`m11_gerado_extra.txt`](maps/m11_gerado_extra.txt) | gerado por `src/gerar_mapa.py` e editado à mão (bônus e esteiras) |
+
+Requisitos do enunciado para os mapas do grupo: (1) ao menos 3 chaves, esteiras e bônus, com o caminho de menor custo coletando um bônus e passando por uma esteira; (2) um mapa armadilha, com pelo menos 20% dos estados alcançáveis sendo estados-armadilha.
+
+#### Gabarito
+
+O gabarito de cada mapa é o caminho encontrado por cada algoritmo, escrito como a lista de posições `(linha, coluna)` de `S` até `G`. Ele foi gerado com os cinco algoritmos (A*, Bellman-Ford, BFS, DFS e Dijkstra) por `src/metrics/map_solution.py`, e cada algoritmo tem a sua pasta:
+
+| Algoritmo | Pasta | Arquivo do m09 | Arquivo do m10 | Arquivo do m11 |
+|---|---|---|---|---|
+| A* | [`out/parte1/gabarito_mapa_gerado/astar/`](out/parte1/gabarito_mapa_gerado/astar/) | [`gabarito_m09_gerado_01.txt`](out/parte1/gabarito_mapa_gerado/astar/gabarito_m09_gerado_01.txt) | [`gabarito_m10_gerado_02.txt`](out/parte1/gabarito_mapa_gerado/astar/gabarito_m10_gerado_02.txt) | [`gabarito_m11_gerado_extra.txt`](out/parte1/gabarito_mapa_gerado/astar/gabarito_m11_gerado_extra.txt) |
+| Bellman-Ford | [`out/parte1/gabarito_mapa_gerado/bellman_ford/`](out/parte1/gabarito_mapa_gerado/bellman_ford/) | [`gabarito_m09_gerado_01.txt`](out/parte1/gabarito_mapa_gerado/bellman_ford/gabarito_m09_gerado_01.txt) | [`gabarito_m10_gerado_02.txt`](out/parte1/gabarito_mapa_gerado/bellman_ford/gabarito_m10_gerado_02.txt) | [`gabarito_m11_gerado_extra.txt`](out/parte1/gabarito_mapa_gerado/bellman_ford/gabarito_m11_gerado_extra.txt) |
+| BFS | [`out/parte1/gabarito_mapa_gerado/bfs/`](out/parte1/gabarito_mapa_gerado/bfs/) | [`gabarito_m09_gerado_01.txt`](out/parte1/gabarito_mapa_gerado/bfs/gabarito_m09_gerado_01.txt) | [`gabarito_m10_gerado_02.txt`](out/parte1/gabarito_mapa_gerado/bfs/gabarito_m10_gerado_02.txt) | [`gabarito_m11_gerado_extra.txt`](out/parte1/gabarito_mapa_gerado/bfs/gabarito_m11_gerado_extra.txt) |
+| DFS | [`out/parte1/gabarito_mapa_gerado/dfs/`](out/parte1/gabarito_mapa_gerado/dfs/) | [`gabarito_m09_gerado_01.txt`](out/parte1/gabarito_mapa_gerado/dfs/gabarito_m09_gerado_01.txt) | [`gabarito_m10_gerado_02.txt`](out/parte1/gabarito_mapa_gerado/dfs/gabarito_m10_gerado_02.txt) | [`gabarito_m11_gerado_extra.txt`](out/parte1/gabarito_mapa_gerado/dfs/gabarito_m11_gerado_extra.txt) |
+| Dijkstra | [`out/parte1/gabarito_mapa_gerado/dijkstra/`](out/parte1/gabarito_mapa_gerado/dijkstra/) | [`gabarito_m09_gerado_01.txt`](out/parte1/gabarito_mapa_gerado/dijkstra/gabarito_m09_gerado_01.txt) | [`gabarito_m10_gerado_02.txt`](out/parte1/gabarito_mapa_gerado/dijkstra/gabarito_m10_gerado_02.txt) | [`gabarito_m11_gerado_extra.txt`](out/parte1/gabarito_mapa_gerado/dijkstra/gabarito_m11_gerado_extra.txt) |
+
+Os mesmos arquivos existem para `m01` a `m08`, com duas exceções. O `m07` não tem arquivo em nenhuma pasta, porque o mapa não tem solução. O `m06` não tem arquivo no Bellman-Ford (que detecta o ciclo negativo e levanta erro) nem no Dijkstra (que não termina nesse mapa).
 
 ## 5. Algoritmos
 
 <!-- Código: src/solver/ -->
 
-| Algoritmo | Critério | Estrutura | Complexidade | Peso negativo |
-|---|---|---|---|---|
-| BFS | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| DFS | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| Dijkstra | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| Bellman-Ford | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| A* | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| Algoritmo | Critério | Estrutura | Complexidade |
+|---|---|---|---|
+| BFS | Menor número de passos (arestas), sem olhar o custo. Expande os estados por nível, do mais perto ao mais longe de `S`. | Fila FIFO (`deque`) e tabela hash (`dict`) de predecessores, que também marca os estados já visitados. | O(V + E) |
+| DFS | Segue um caminho até o fim antes de voltar. Devolve o primeiro caminho que encontra, sem garantia de ser o menor. | Pilha LIFO (`list`) e tabela hash (`dict`) de predecessores. | O(V + E) |
+| Dijkstra | Menor custo acumulado desde `S`. Sempre expande o estado de menor custo conhecido. | Fila de prioridade (`heapq`, min-heap) e tabela hash (`dict`) com o melhor custo e o predecessor de cada estado. | O((V + E) log V) |
+| Bellman-Ford | Menor custo acumulado, relaxando todas as arestas em até V − 1 rodadas. Uma rodada extra detecta ciclo negativo. | Conjunto (`set`) de todos os estados alcançáveis, obtido por exploração prévia, e tabela hash (`dict`) com custos e predecessores. | O(V · E) |
+| A* | Menor custo, guiado por uma estimativa. A prioridade é custo acumulado + heurística (distância de Manhattan até `G`). | Fila de prioridade (`heapq`) e tabela hash (`dict`) com o melhor custo e o predecessor. | O((V + E) log V) no pior caso, o mesmo do Dijkstra. |
+
+V e E são o número de estados e de arestas do grafo de estados (G_est) alcançável a partir de `S`.
 
 ### 5.1 Discussões obrigatórias
 
