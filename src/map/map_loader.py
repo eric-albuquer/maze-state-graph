@@ -1,3 +1,4 @@
+import re
 from src.map.map import *
 from pathlib import Path
 
@@ -55,6 +56,22 @@ def map_load(file_path: str) -> Map:
 VALID_SYMBOLS = set("#.SG,~><v^+*") | set("abcdefghijklmnopqrstuvwxyz") | set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 
+# [IA] Claude Code (Claude Sonnet 5.5) – validação das linhas do mapa, extraída de map_import para ser reaproveitada pelo editor (comportamento inalterado)
+def _validate_lines(lines: list[str]) -> None:
+    for y, line in enumerate(lines, start=1):
+        for ch in line:
+            if ch not in VALID_SYMBOLS:
+                raise ValueError(f"Símbolo inválido {ch!r} na linha {y}.")
+    if len({len(line) for line in lines}) != 1:
+        raise ValueError("Todas as linhas do mapa devem ter o mesmo tamanho.")
+
+    flat = "".join(lines)
+    if flat.count("S") != 1:
+        raise ValueError("O mapa deve ter exatamente um início (S).")
+    if flat.count("G") != 1:
+        raise ValueError("O mapa deve ter exatamente um fim (G).")
+
+
 # [IA] Claude Code (Claude Sonnet 5.5) – importa e valida mapa de arquivo .md/.txt (solto ou em bloco de código)
 def map_import(file_path: str | Path) -> Map:
     """Lê um mapa de um arquivo .md/.txt qualquer (caminho absoluto ou relativo).
@@ -76,19 +93,7 @@ def map_import(file_path: str | Path) -> Map:
     ]
     if not lines:
         raise ValueError("O arquivo está vazio.")
-
-    for y, line in enumerate(lines, start=1):
-        for ch in line:
-            if ch not in VALID_SYMBOLS:
-                raise ValueError(f"Símbolo inválido {ch!r} na linha {y}.")
-    if len({len(line) for line in lines}) != 1:
-        raise ValueError("Todas as linhas do mapa devem ter o mesmo tamanho.")
-
-    flat = "".join(lines)
-    if flat.count("S") != 1:
-        raise ValueError("O mapa deve ter exatamente um início (S).")
-    if flat.count("G") != 1:
-        raise ValueError("O mapa deve ter exatamente um fim (G).")
+    _validate_lines(lines)
 
     return _parse_map(lines)
 
@@ -109,10 +114,14 @@ def map_import_and_save(file_path: str | Path) -> tuple[Map, str]:
     e o caminho salvo relativo a maps/ (ex.: "update/meu_mapa.txt").
     """
     map = map_import(file_path)
+    return map, _save_in_update(map, Path(file_path).stem)
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – salva em maps/update/ sem sobrescrever (extraído de map_import_and_save)
+def _save_in_update(map: Map, stem: str) -> str:
     folder = MAPS_FOLDER / UPDATE_FOLDER
     folder.mkdir(parents=True, exist_ok=True)
 
-    stem = Path(file_path).stem
     name = f"{stem}.txt"
     n = 2
     while (folder / name).exists():
@@ -121,7 +130,27 @@ def map_import_and_save(file_path: str | Path) -> tuple[Map, str]:
 
     saved = f"{UPDATE_FOLDER}/{name}"
     map_save(map, saved)
-    return map, saved
+    return saved
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – valida e salva o mapa montado no editor da UI, em maps/update/
+def map_create_and_save(lines: list[str], name: str) -> tuple[Map, str]:
+    """Valida o mapa montado no editor e o salva em maps/update/<nome>.txt.
+
+    Exige a borda toda de paredes (o solver não confere os limites da grade).
+    Nunca sobrescreve: se o nome já existe, acrescenta _2, _3... Levanta
+    ValueError se o nome ou o mapa forem inválidos.
+    """
+    stem = re.sub(r"[^A-Za-z0-9_-]", "_", name.strip())
+    if not stem.strip("_"):
+        raise ValueError("Dê um nome ao mapa (letras, números, _ ou -).")
+    _validate_lines(lines)
+    border = lines[0] + lines[-1] + "".join(line[0] + line[-1] for line in lines)
+    if set(border) != {"#"}:
+        raise ValueError("A borda do mapa deve ser toda de paredes (#).")
+
+    map = _parse_map(lines)
+    return map, _save_in_update(map, stem)
 
 
 # [IA] Claude Code (Claude Sonnet 5.5) – lista os mapas já salvos em maps/update/

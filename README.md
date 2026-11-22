@@ -33,6 +33,7 @@ pip install -r requirements.txt
 │   │   ├── map_nodes.py        # tipos de célula (parede, chave, porta...)
 │   │   ├── map_state.py        # estado do grafo (posição + chaves)
 │   │   ├── map_loader.py       # leitura/gravação de mapas
+│   │   ├── map_editor.py       # lógica do editor de mapas da UI
 │   │   └── map_generator.py    # gerador de mapas
 │   ├── solver/             # algoritmos de busca no grafo de estados
 │   │   ├── solver_common.py    # vizinhança/transições comuns
@@ -95,10 +96,26 @@ Abra com `python -m src.ui`. O fluxo é: escolher o mapa → escolher o algoritm
 | `Enter` ou clique | escolher a opção |
 | `ESC` | voltar à tela anterior |
 
-- **Escolha o mapa:** lista os mapas de `maps/`, mais "Gerar mapa" e "Importar mapa". Importar abre o explorador de arquivos, valida um `.md` ou `.txt` e salva em `maps/update/`.
+- **Escolha o mapa:** lista os mapas de `maps/`, mais "Gerar mapa", "Importar mapa" e "Criar mapa". Importar abre o explorador de arquivos, valida um `.md` ou `.txt` e salva em `maps/update/`. Criar abre o editor de mapas (veja abaixo).
 - **Gerar mapa:** abre a tela de parâmetros. `↑` / `↓` escolhe o campo, `←` / `→` (ou clicar nas metades) altera o valor, e depois se escolhe "Gerar mapa" ou "Restaurar padrão". `ESC` cancela a geração em andamento.
 - **Escolha o algoritmo:** um algoritmo roda sozinho com o painel de informações ao lado. "Comparar Algoritmos" mostra 4 ao mesmo tempo, em quadrantes.
 - **Comparar Algoritmos:** `↑` / `↓` move o cursor, `Espaço` ou clique marca e desmarca (exatamente 4), e `Enter` inicia.
+
+### Editor de mapas ("Criar mapa")
+
+Escolha o tamanho do mapa (quatro opções prontas ou "Personalizado", em que você digita as linhas e as colunas) e pinte as casas. No tamanho personalizado, são aceitos só números inteiros, de 5 a 61 linhas e de 5 a 101 colunas, e um valor inválido mostra um aviso e pede de novo. A borda é sempre de paredes e não pode ser alterada. O mapa começa com `S` e `G` nos cantos, e só pode haver um de cada: pintar um novo move o anterior.
+
+| Comando | O que faz |
+|---|---|
+| clique na paleta | escolhe o tipo de casa (parede, chão, início, saída, lama, água, bônus, fonte, esteiras, chave e porta) |
+| clique ou arrastar no mapa | pinta com o tipo escolhido |
+| botão direito | apaga a casa (vira chão) |
+| `↑` `↓` `←` `→` | escolhem a esteira ^ v < > |
+| letras `a`–`z` | escolhem a letra da chave e da porta (não valem `s`, `g` e `v`, que são símbolos do mapa) |
+| `Enter` | pede o nome e salva em `maps/update/<nome>.txt` (nunca sobrescreve: acrescenta `_2`, `_3`...) |
+| `ESC` | sai sem salvar |
+
+O mapa salvo aparece na lista de mapas, pronto para ser executado, e precisa ter um início e uma saída.
 
 ### Comandos durante a simulação
 

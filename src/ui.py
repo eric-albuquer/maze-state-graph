@@ -12,7 +12,9 @@ from src.settings.display import *
 from src.visualizations import run_tree_screen
 # [IA] Claude Code (Claude Sonnet 5.5) – imports do botão de importar mapa
 from src.file_picker import pick_map_file, FilePickerError
-from src.map.map_loader import map_import_and_save, list_update_maps, map_load
+from src.map.map_loader import map_import_and_save, list_update_maps, map_load, map_create_and_save
+# [IA] Claude Code (Claude Sonnet 5.5) – lógica do editor de mapas (pintar, apagar, montar as linhas)
+from src.map.map_editor import new_grid, paint, erase, grid_to_lines, parse_size, MIN_SIZE, MAX_ROWS, MAX_COLS
 from src.sprites import tile_sprites, player_sprite, get_sprite, FLOOR
 from src.settings.map_setup import MAPS, GENERATED, GENERATOR_PARAMS, load_map
 from src.settings.solver_setup import SOLVER_NAMES, get_solver
@@ -233,6 +235,241 @@ def warning_screen(title: str, message: str):
         )
         pygame.display.flip()
         clock.tick(30)
+
+
+# [IA] Claude Code (Claude Sonnet 5.5) – editor de mapas em pygame: o usuário pinta o mapa casa por casa e o salva em maps/update/
+EDITOR_COLORS = {
+    "#": (110, 60, 40), ".": (236, 240, 241), "S": (46, 204, 113), "G": (231, 76, 60),
+    ",": (160, 82, 45), "~": (52, 152, 219), "+": (230, 126, 34), "*": (155, 89, 182),
+    ">": (26, 188, 156), "<": (26, 188, 156), "^": (26, 188, 156), "v": (26, 188, 156),
+}
+EDITOR_KEY_COLOR, EDITOR_DOOR_COLOR = (241, 196, 15), (127, 140, 141)
+# s, g e v são símbolos do mapa (início, saída e esteira para baixo), então não servem de letra de chave ou porta
+EDITOR_RESERVED_LETTERS = "sgv"
+EDITOR_SIZES = [
+    ("Pequeno (11 x 15)", (11, 15)),
+    ("Médio (15 x 21)", (15, 21)),
+    ("Grande (21 x 31)", (21, 31)),
+    ("Muito grande (25 x 41)", (25, 41)),
+]
+# (símbolo ou tipo, nome na paleta); "key" e "door" usam a letra escolhida
+EDITOR_TOOLS = [
+    ("#", "Parede"), (".", "Chão"), ("S", "Início"), ("G", "Saída"),
+    (",", "Lama"), ("~", "Água"), ("+", "Bônus"), ("*", "Fonte"),
+    (">", "Esteira >"), ("<", "Esteira <"), ("^", "Esteira ^"), ("v", "Esteira v"),
+    ("key", "Chave"), ("door", "Porta"),
+]
+
+
+def text_input_screen(
+    title: str, prompt: str, default: str = "", digits_only: bool = False,
+    hint: str = "Enter para salvar  •  ESC para cancelar",
+) -> str | None:
+    """Pede um texto. Enter confirma, ESC cancela (retorna None)."""
+    text = default
+    box = pygame.Rect(0, 0, min(WIDTH - 80, 800), 260)
+    box.center = (WIDTH // 2, HEIGHT // 2)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return None
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    return text
+                elif event.key == pygame.K_BACKSPACE:
+                    text = text[:-1]
+                elif (
+                    event.unicode and event.unicode.isprintable() and len(text) < 30
+                    and (not digits_only or event.unicode.isdigit())
+                ):
+                    text += event.unicode
+
+        screen.fill(COLOR_BACKGROUND)
+        draw_box(box)
+        draw_centered(item_font, title, COLOR_ACCENT, box.top + 55, box.centerx)
+        draw_centered(hint_font, prompt, COLOR_HINT, box.top + 110, box.centerx)
+        field = pygame.Rect(box.x + 40, box.top + 140, box.width - 80, 50)
+        draw_box(field, True, shadow=False)
+        cursor = "_" if (pygame.time.get_ticks() // 500) % 2 == 0 else " "
+        draw_centered(item_font, text + cursor, COLOR_MENU_TEXT, field.centery, field.centerx)
+        draw_centered(hint_font, hint, COLOR_HINT, box.bottom - 25, box.centerx)
+        pygame.display.flip()
+        clock.tick(30)
+
+
+def ask_dimension(label: str, lo: int, hi: int, default: int) -> int | None:
+    """Pede um tamanho (linhas ou colunas) e só aceita um inteiro válido. None se o usuário cancelou."""
+    while True:
+        text = text_input_screen(
+            f"Número de {label}", f"Digite um número entre {lo} e {hi}", str(default),
+            digits_only=True, hint="Enter para confirmar  •  ESC para voltar",
+        )
+        if text is None:
+            return None
+        try:
+            return parse_size(text, lo, hi, label)
+        except ValueError as e:
+            warning_screen("Tamanho inválido", str(e))
+
+
+def custom_size_screen() -> tuple[int, int] | None:
+    """Pede as linhas e as colunas do mapa. None se o usuário cancelou."""
+    rows = ask_dimension("linhas", MIN_SIZE, MAX_ROWS, 15)
+    if rows is None:
+        return None
+    cols = ask_dimension("colunas", MIN_SIZE, MAX_COLS, 21)
+    if cols is None:
+        return None
+    return rows, cols
+
+
+def editor_screen() -> tuple[Map, str] | None:
+    """Editor de mapas. Retorna (mapa, caminho salvo em maps/) ou None se o usuário saiu."""
+    options = [label for label, _ in EDITOR_SIZES] + ["Personalizado (digitar o tamanho)"]
+    while True:
+        size = menu_screen("Tamanho do mapa", options, subtitle="Você vai pintar o mapa casa por casa")
+        if size is None:
+            return None
+        if size < len(EDITOR_SIZES):
+            rows, cols = EDITOR_SIZES[size][1]
+            break
+        custom = custom_size_screen()
+        if custom is not None:
+            rows, cols = custom
+            break
+    grid = new_grid(rows, cols)
+
+    tool = 0
+    letter = "a"
+    painting = None  # None, "paint" ou "erase"
+
+    pal = pygame.Rect(10, 10, int(WIDTH * 0.24), HEIGHT - 70)
+    area = pygame.Rect(pal.right + 20, 10, WIDTH - pal.right - 30, HEIGHT - 70)
+    cs = max(8, min(area.width // cols, area.height // rows))
+    ox = area.x + (area.width - cs * cols) // 2
+    oy = area.y + (area.height - cs * rows) // 2
+    cell_font = make_font(max(10, int(cs * 0.9)))
+    item_h = min(48, (pal.height - 90) // len(EDITOR_TOOLS))
+    tool_rects = [
+        pygame.Rect(pal.x + 12, pal.y + 12 + i * item_h, pal.width - 24, item_h - 6)
+        for i in range(len(EDITOR_TOOLS))
+    ]
+
+    def tool_symbol(i: int) -> str:
+        kind = EDITOR_TOOLS[i][0]
+        return letter if kind == "key" else letter.upper() if kind == "door" else kind
+
+    def tool_label(i: int) -> str:
+        kind, name = EDITOR_TOOLS[i]
+        return f"{name} ({tool_symbol(i)})" if kind in ("key", "door") else f"{name}  {kind}" if kind in "#.,~+*SG" else name
+
+    def cell_color(ch: str):
+        if ch in EDITOR_COLORS:
+            return EDITOR_COLORS[ch]
+        return EDITOR_KEY_COLOR if ch.islower() else EDITOR_DOOR_COLOR
+
+    def cell_at(pos):
+        x, y = (pos[0] - ox) // cs, (pos[1] - oy) // cs
+        return (x, y) if 0 <= x < cols and 0 <= y < rows else None
+
+    def apply(pos, mode):
+        cell = cell_at(pos)
+        if cell is None:
+            return
+        if mode == "paint":
+            paint(grid, cell[0], cell[1], tool_symbol(tool))
+        else:
+            erase(grid, cell[0], cell[1])
+
+    def select_symbol(symbol: str):
+        nonlocal tool
+        for i, (kind, _) in enumerate(EDITOR_TOOLS):
+            if kind == symbol:
+                tool = i
+
+    def save():
+        name = text_input_screen("Nome do mapa", "Será salvo em maps/update/ e aparece na lista de mapas", "meu_mapa")
+        if name is None:
+            return None
+        try:
+            return map_create_and_save(grid_to_lines(grid), name)
+        except ValueError as e:
+            warning_screen("Não foi possível salvar o mapa", str(e))
+            return None
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return None
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    saved = save()
+                    painting = None
+                    if saved is not None:
+                        return saved
+                elif event.key == pygame.K_UP:
+                    select_symbol("^")
+                elif event.key == pygame.K_DOWN:
+                    select_symbol("v")
+                elif event.key == pygame.K_LEFT:
+                    select_symbol("<")
+                elif event.key == pygame.K_RIGHT:
+                    select_symbol(">")
+                elif event.unicode and event.unicode in "#.,~+*":
+                    select_symbol(event.unicode)
+                elif (
+                    event.unicode and event.unicode.isascii() and event.unicode.isalpha()
+                    and event.unicode.lower() not in EDITOR_RESERVED_LETTERS
+                ):
+                    letter = event.unicode.lower()
+                    if EDITOR_TOOLS[tool][0] not in ("key", "door"):
+                        select_symbol("key")
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3):
+                clicked = next((i for i, r in enumerate(tool_rects) if r.collidepoint(event.pos)), None)
+                if clicked is not None and event.button == 1:
+                    tool = clicked
+                else:
+                    painting = "paint" if event.button == 1 else "erase"
+                    apply(event.pos, painting)
+            elif event.type == pygame.MOUSEMOTION and painting:
+                apply(event.pos, painting)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                painting = None
+
+        screen.fill(COLOR_BACKGROUND)
+        draw_box(pal)
+        for i, rect in enumerate(tool_rects):
+            draw_box(rect, i == tool, shadow=False)
+            swatch = pygame.Rect(rect.x + 8, rect.y + 6, rect.height - 12, rect.height - 12)
+            ch = tool_symbol(i)
+            pygame.draw.rect(screen, cell_color(ch), swatch)
+            screen.blit(hint_font.render(tool_label(i), True, item_color(i == tool)), (swatch.right + 12, rect.y + rect.height // 2 - 10))
+        help_y = tool_rects[-1].bottom + 14
+        for k, line in enumerate(["Letras: escolhem a letra", "da chave e da porta", "(menos s, g e v)", "Setas: escolhem esteira"]):
+            screen.blit(hint_font.render(line, True, COLOR_HINT), (pal.x + 14, help_y + k * 24))
+
+        for y in range(rows):
+            for x in range(cols):
+                ch = grid[y][x]
+                rect = pygame.Rect(ox + x * cs, oy + y * cs, cs, cs)
+                pygame.draw.rect(screen, cell_color(ch), rect)
+                pygame.draw.rect(screen, COLOR_GRID_BORDER, rect, width=1)
+                if ch not in "#.":
+                    text = cell_font.render(ch, True, COLOR_TEXT)
+                    screen.blit(text, text.get_rect(center=rect.center))
+        draw_centered(
+            hint_font,
+            "Clique/arraste: pintar  •  Botão direito: apagar  •  Enter: salvar  •  ESC: sair sem salvar",
+            COLOR_HINT, HEIGHT - 30,
+        )
+        pygame.display.flip()
+        clock.tick(60)
 
 
 # [IA] Claude Code (Claude Sonnet 5.5) – tela de espera em pygame enquanto os solvers rodam em threads (a janela não trava)
@@ -1346,6 +1583,7 @@ def main():
     # o número de um mapa de maps/ ou um Map já importado de arquivo.
     # [IA] Claude Code (Claude Sonnet 5.5) – lista de mapas com botão "Importar mapa (.md)" e mapas importados (maps/update/)
     IMPORT = "import"
+    CREATE = "create"
     base_maps = [
         (name.removesuffix(".txt"), c, load_map(c)) for c, name in MAPS.items()
     ]
@@ -1370,7 +1608,8 @@ def main():
     while True:
         entries = (
             [("Gerar mapa", GENERATED, None),
-             ("Importar mapa", IMPORT, "Abre o explorador de arquivos")]
+             ("Importar mapa", IMPORT, "Abre o explorador de arquivos"),
+             ("Criar mapa", CREATE, "Monte seu próprio mapa pintando as casas")]
             + base_maps
             + imported_maps
         )
@@ -1399,6 +1638,14 @@ def main():
                 )
                 continue
             imported_maps.append((Path(saved).stem, imported, imported))
+            continue
+
+        # [IA] Claude Code (Claude Sonnet 5.5) – fluxo do botão de criar: editor de mapas, salva em maps/update/ e entra na lista
+        if choice == CREATE:
+            created = editor_screen()
+            if created is not None:
+                new_map, saved = created
+                imported_maps.append((Path(saved).stem, new_map, new_map))
             continue
 
         params = None

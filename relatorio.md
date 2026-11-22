@@ -11,7 +11,7 @@ Teoria dos Grafos — 2026.2
 - Caio Almeida
 
 **Orientadora:**
-
+git ad
 - Laura Alvez
 
 ---
