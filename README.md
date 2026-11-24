@@ -77,6 +77,8 @@ Execute sempre a partir da raiz do projeto (os mapas são lidos de `maps/`).
 python -m src.ui                    # interface gráfica
 python -m src.gerar_mapa            # gera um mapa aleatório em maps/
 python -m src.metrics.graph_metrics # gera out/parte1/metricas_grafos.txt
+python -m src.metrics.door_model_metrics # gera comparação dos modelos de portas
+python -m src.metrics.key_layer_metrics # gera métricas de estados por conjunto de chaves
 python -m src.metrics.map_solution  # gera os gabaritos em out/parte1/gabarito_mapa_gerado/
 ```
 
@@ -136,6 +138,8 @@ python -m pytest test/test_algorithms/test_dijkstra.py # testes do Dijkstra
 python -m pytest test/test_algorithms/test_bellman_ford.py # testes do Bellman-Ford
 python -m pytest test/test_directed_arcs.py                 # arcos dirigidos das esteiras
 python -m pytest test/test_states.py                         # estados, chaves e bônus
+python -m pytest test/test_key_layer_metrics.py              # métricas por camada de chaves
+python -m pytest test/test_graph_metrics.py                  # modelos de portas
 ```
 
 ## Formato dos mapas
