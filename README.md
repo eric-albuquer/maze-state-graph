@@ -126,7 +126,7 @@ Abra com `python -m src.ui`. O fluxo é: escolher o mapa → escolher o algoritm
 
 O caminho final aparece em branco na árvore.
 
-## Testes dos algoritmos e arcos dirigidos
+## Testes
 
 ```bash
 python -m pytest                                  # todos os testes
@@ -135,6 +135,7 @@ python -m pytest test/test_algorithms/test_dfs.py # testes do DFS
 python -m pytest test/test_algorithms/test_dijkstra.py # testes do Dijkstra
 python -m pytest test/test_algorithms/test_bellman_ford.py # testes do Bellman-Ford
 python -m pytest test/test_directed_arcs.py                 # arcos dirigidos das esteiras
+python -m pytest test/test_states.py                         # estados, chaves e bônus
 ```
 
 ## Formato dos mapas
