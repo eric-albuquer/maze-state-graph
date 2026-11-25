@@ -175,7 +175,7 @@ Os demais terrenos (água, esteiras direcionadas, bônus, fonte) estão definido
 
 ## Declaração de uso de IA
 
-[Documento de declaração de uso de IA](https://docs.google.com/document/d/1a_AzeSNbBuQOpufTuFRQ0rQSwkhV5YSE/edit?usp=sharing&ouid=115450337528857953689&rtpof=true&sd=true)
+[Documento de declaração de uso de IA](https://drive.google.com/file/d/1Jgi799EGuoRdg2pDStuocDCImvu361T3/view?usp=drive_link)
 
 ## Integrantes
 
